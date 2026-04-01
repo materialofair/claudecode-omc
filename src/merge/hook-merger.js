@@ -26,31 +26,66 @@ function loadHookFilesFromSource(sourceDir, sourceName) {
 }
 
 /**
- * Load hooks.json config from a source directory
+ * Load hooks.json config from a source directory.
+ * Skips configs that only reference $CLAUDE_PLUGIN_ROOT/scripts/ (compiled plugin hooks
+ * that can't work standalone).
  */
 function loadHooksConfig(sourceDir) {
   const configPath = path.join(sourceDir, 'hooks.json');
   if (!fs.existsSync(configPath)) return null;
   try {
-    return JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    // Check if all commands reference plugin-internal scripts (not usable standalone)
+    const json = JSON.stringify(config);
+    if (json.includes('CLAUDE_PLUGIN_ROOT') && json.includes('/scripts/run.cjs')) {
+      // This is a compiled plugin hooks.json — skip it
+      return null;
+    }
+    return config;
   } catch {
     return null;
   }
 }
 
 /**
- * Merge multiple hooks.json configs together
+ * Rewrite $CLAUDE_PLUGIN_ROOT references to an absolute path
+ */
+function rewritePluginRoot(obj, absolutePath) {
+  const json = JSON.stringify(obj);
+  const rewritten = json
+    .replace(/\$CLAUDE_PLUGIN_ROOT|\$\{CLAUDE_PLUGIN_ROOT\}/g, absolutePath);
+  return JSON.parse(rewritten);
+}
+
+/**
+ * Merge multiple hooks.json configs together.
+ * Handles the nested structure: { description?: string, hooks: { EventName: [...] } }
  */
 function mergeHooksConfigs(configs) {
-  const merged = {};
-  for (const { config } of configs) {
-    for (const [event, hooks] of Object.entries(config)) {
-      if (!merged[event]) merged[event] = [];
-      if (Array.isArray(hooks)) {
-        merged[event].push(...hooks);
+  const merged = { hooks: {} };
+
+  for (const { sourceName, config, sourceDir } of configs) {
+    // The actual event map lives under config.hooks (not config directly)
+    const eventMap = config.hooks || config;
+
+    for (const [event, rules] of Object.entries(eventMap)) {
+      // Skip non-array entries (e.g. "description" string)
+      if (!Array.isArray(rules)) continue;
+
+      if (!merged.hooks[event]) {
+        merged.hooks[event] = [];
       }
+
+      // Rewrite $CLAUDE_PLUGIN_ROOT to the actual source directory
+      let processedRules = rules;
+      if (sourceDir) {
+        processedRules = rewritePluginRoot(rules, sourceDir);
+      }
+
+      merged.hooks[event].push(...processedRules);
     }
   }
+
   return merged;
 }
 

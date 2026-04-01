@@ -101,7 +101,9 @@ async function installHooks(sources, installTarget, flags) {
   const configs = [];
   for (const { name, dir } of sources) {
     const config = loadHooksConfig(dir);
-    if (config) configs.push({ sourceName: name, config });
+    // $CLAUDE_PLUGIN_ROOT points to the source root, not the hooks/ subdir
+    const sourceRoot = path.dirname(dir);
+    if (config) configs.push({ sourceName: name, config, sourceDir: sourceRoot });
   }
 
   if (configs.length > 0 && !flags.dryRun) {
