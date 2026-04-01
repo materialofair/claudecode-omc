@@ -38,6 +38,18 @@ function getDefaultConfig() {
           commands: 'commands',
         },
       },
+      'anthropic-skills': {
+        remote: 'https://github.com/anthropics/skills.git',
+        ref: 'main',
+        priority: 99,
+        artifacts: ['skills'],
+        mapping: {
+          skills: 'skills',
+          spec: 'spec',
+          template: 'template',
+        },
+        role: 'reference',
+      },
     },
     lastSync: null,
     syncHistory: [],

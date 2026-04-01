@@ -229,6 +229,9 @@ async function setup(args, flags = {}) {
     // Collect sources that have this artifact type
     const sourcesForType = [];
     for (const [name, src] of orderedSources) {
+      // Skip reference-only sources (e.g. anthropic-skills) — they provide
+      // evaluation standards, not installable artifacts.
+      if (src.role === 'reference') continue;
       const declaredArtifacts = src.artifacts || [];
       if (!declaredArtifacts.includes(artifactType)) continue;
 
