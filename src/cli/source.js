@@ -4,7 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const fsp = require('fs/promises');
 const { readConfig, setActiveSource, recordSync, addSource, removeSource } = require('../config/sources');
-const { getProjectRoot, getSourceArtifactDir } = require('../config/paths');
+const { getProjectRoot, getSourceArtifactDir, getSyncTargetDir, getSyncTempDir } = require('../config/paths');
 
 async function copyDirRecursive(src, dest) {
   await fsp.mkdir(dest, { recursive: true });
@@ -23,7 +23,7 @@ async function copyDirRecursive(src, dest) {
 async function syncRemoteSource(sourceName, sourceConfig, root) {
   console.log(`  Syncing ${sourceName} from ${sourceConfig.remote} (${sourceConfig.ref})...`);
 
-  const tmpDir = path.join(root, '.tmp-sync-' + sourceName);
+  const tmpDir = getSyncTempDir(sourceName, root);
   try {
     if (fs.existsSync(tmpDir)) {
       await fsp.rm(tmpDir, { recursive: true, force: true });
@@ -46,7 +46,7 @@ async function syncRemoteSource(sourceName, sourceConfig, root) {
     for (const artifactType of artifacts) {
       const srcSubdir = mapping[artifactType] || artifactType;
       const srcPath = path.join(tmpDir, srcSubdir);
-      const destPath = getSourceArtifactDir(sourceName, artifactType, root);
+      const destPath = getSyncTargetDir(sourceName, artifactType, root);
 
       if (fs.existsSync(srcPath)) {
         await fsp.rm(destPath, { recursive: true, force: true });
@@ -110,12 +110,12 @@ async function source(args, flags = {}) {
       const name = args[1];
       if (!name) throw new Error('Usage: omc-manage source remove <name>');
       await removeSource(name);
-      // Clean up upstream directory
+      // Clean up upstream directories (both dev and user-synced)
       const root = getProjectRoot();
-      const upstreamDir = path.join(root, '.upstream', name);
-      if (fs.existsSync(upstreamDir)) {
-        await fsp.rm(upstreamDir, { recursive: true, force: true });
-      }
+      const devDir = path.join(root, '.upstream', name);
+      const userDir = path.join(require('../config/paths').USER_DATA_DIR, 'upstream', name);
+      if (fs.existsSync(devDir)) await fsp.rm(devDir, { recursive: true, force: true });
+      if (fs.existsSync(userDir)) await fsp.rm(userDir, { recursive: true, force: true });
       console.log(`Source "${name}" removed.`);
       break;
     }

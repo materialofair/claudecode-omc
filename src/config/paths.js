@@ -1,18 +1,84 @@
 const path = require('path');
 const os = require('os');
+const fs = require('fs');
 const { ARTIFACT_TYPES } = require('./artifact-types');
+
+const USER_DATA_DIR = path.join(os.homedir(), '.omc-manage');
 
 function getProjectRoot() {
   return path.resolve(__dirname, '..', '..');
 }
 
-// Generic: get source artifact directory
+/**
+ * Detect if running from an npm-installed package (no .git dir, has bundled/)
+ */
+function isDistributionMode() {
+  const root = getProjectRoot();
+  return !fs.existsSync(path.join(root, '.git'))
+    && fs.existsSync(path.join(root, 'bundled', 'upstream'));
+}
+
+/**
+ * Get the directory for a source's artifact type.
+ *
+ * Resolution order:
+ *   Dev mode:
+ *     local  → <repo>/.local/<type>
+ *     other  → <repo>/.upstream/<source>/<type>
+ *
+ *   Distribution mode:
+ *     local  → ~/.omc-manage/local/<type>
+ *     other  → ~/.omc-manage/upstream/<source>/<type>  (if synced)
+ *              → <pkg>/bundled/upstream/<source>/<type> (fallback)
+ */
 function getSourceArtifactDir(sourceName, artifactType, root) {
   root = root || getProjectRoot();
+
+  if (isDistributionMode()) {
+    if (sourceName === 'local') {
+      return path.join(USER_DATA_DIR, 'local', artifactType);
+    }
+    // Check user-synced first, then fall back to bundled
+    const synced = path.join(USER_DATA_DIR, 'upstream', sourceName, artifactType);
+    if (fs.existsSync(synced)) {
+      return synced;
+    }
+    return path.join(root, 'bundled', 'upstream', sourceName, artifactType);
+  }
+
+  // Dev mode
   if (sourceName === 'local') {
     return path.join(root, '.local', artifactType);
   }
   return path.join(root, '.upstream', sourceName, artifactType);
+}
+
+/**
+ * Get the write target for source sync.
+ * In distribution mode, synced data goes to ~/.omc-manage/upstream/
+ * In dev mode, it goes to <repo>/.upstream/
+ */
+function getSyncTargetDir(sourceName, artifactType, root) {
+  root = root || getProjectRoot();
+
+  if (isDistributionMode()) {
+    return path.join(USER_DATA_DIR, 'upstream', sourceName, artifactType);
+  }
+  return path.join(root, '.upstream', sourceName, artifactType);
+}
+
+/**
+ * Get the temp directory for sync operations.
+ * In distribution mode, use ~/.omc-manage/tmp/
+ * In dev mode, use <repo>/.tmp-sync-{source}
+ */
+function getSyncTempDir(sourceName, root) {
+  root = root || getProjectRoot();
+
+  if (isDistributionMode()) {
+    return path.join(USER_DATA_DIR, 'tmp', 'sync-' + sourceName);
+  }
+  return path.join(root, '.tmp-sync-' + sourceName);
 }
 
 // Generic: get install target for an artifact type
@@ -51,13 +117,20 @@ function getMergeConfigPath(root) {
 }
 
 function getReportDir(root) {
+  if (isDistributionMode()) {
+    return path.join(USER_DATA_DIR, 'reports');
+  }
   return path.join(root || getProjectRoot(), '.omc-manage');
 }
 
 module.exports = {
   getProjectRoot,
+  isDistributionMode,
   getSourceArtifactDir,
+  getSyncTargetDir,
+  getSyncTempDir,
   getInstallTarget,
+  USER_DATA_DIR,
   // Backward-compatible
   getLocalSkillsDir,
   getUpstreamSkillsDir,

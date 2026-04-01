@@ -1,13 +1,14 @@
 {
   "name": "claudecode-omc",
-  "version": "0.1.0",
-  "description": "Multi-source Claude Code skill manager for oh-my-claudecode",
+  "version": "0.2.0",
+  "description": "Claude Code harness — best-practice skills, agents, hooks, and configs from multiple sources",
   "bin": {
     "omc-manage": "bin/omc-manage.js"
   },
   "files": [
     "bin",
     "src",
+    "bundled",
     "scripts",
     "templates",
     "README.md"
@@ -16,10 +17,13 @@
     "setup": "node bin/omc-manage.js setup",
     "doctor": "node bin/omc-manage.js doctor",
     "source:list": "node bin/omc-manage.js source list",
-    "source:sync": "node bin/omc-manage.js source sync --all",
+    "source:sync": "node bin/omc-manage.js source sync",
     "source:status": "node bin/omc-manage.js source status",
     "skill:list": "node bin/omc-manage.js skill list",
-    "skill:conflicts": "node bin/omc-manage.js skill conflicts"
+    "skill:conflicts": "node bin/omc-manage.js skill conflicts",
+    "bundle": "bash scripts/bundle-upstream.sh",
+    "prepublishOnly": "bash scripts/bundle-upstream.sh",
+    "postinstall": "node scripts/post-install-message.js"
   },
   "engines": {
     "node": ">=20"
@@ -27,9 +31,14 @@
   "keywords": [
     "claude-code",
     "oh-my-claudecode",
+    "superpowers",
     "skills",
+    "agents",
+    "hooks",
+    "harness",
     "multi-source",
-    "ai-agent"
+    "ai-agent",
+    "best-practices"
   ],
   "license": "MIT"
 }
