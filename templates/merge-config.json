@@ -7,5 +7,16 @@
     { "name": "oh-my-claudecode", "priority": 2 },
     { "name": "superpowers", "priority": 3 }
   ],
-  "preferences": {}
+  "preferences": {},
+  "exclude": {
+    "skills": [
+      "ask",
+      "ccg",
+      "multi-model-research",
+      "test-gen",
+      "release",
+      "omc-teams",
+      "using-superpowers"
+    ]
+  }
 }

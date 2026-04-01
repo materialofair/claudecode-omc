@@ -65,7 +65,19 @@ async function installNameBasedArtifacts(artifactType, sources, mergeConfig, ins
 
   const conflicts = detectConflicts(loaded);
   const resolutions = resolveConflicts(conflicts, mergeConfig);
-  const merged = applyResolutions(loaded, resolutions);
+  let merged = applyResolutions(loaded, resolutions);
+
+  // Apply exclude list
+  const excludeList = (mergeConfig.exclude && mergeConfig.exclude[artifactType]) || [];
+  if (excludeList.length > 0) {
+    const excludeSet = new Set(excludeList);
+    const before = merged.length;
+    merged = merged.filter(item => !excludeSet.has(item.name));
+    const excluded = before - merged.length;
+    if (excluded > 0) {
+      console.log(`    excluded ${excluded} items: ${excludeList.filter(n => merged.every(m => m.name !== n)).join(', ')}`);
+    }
+  }
 
   if (flags.dryRun) {
     for (const item of merged.sort((a, b) => a.name.localeCompare(b.name))) {

@@ -70,9 +70,15 @@ async function artifact(args, flags = {}) {
 
       const conflicts = detectConflicts(sources);
       const resolutions = resolveConflicts(conflicts, mergeConfig);
-      const merged = applyResolutions(sources, resolutions);
+      let merged = applyResolutions(sources, resolutions);
 
-      console.log(`${ARTIFACT_TYPES[artifactType].label} (${merged.length} total, from ${sources.length} sources):`);
+      // Apply exclude list
+      const excludeList = (mergeConfig.exclude && mergeConfig.exclude[artifactType]) || [];
+      const excludeSet = new Set(excludeList);
+      const excluded = merged.filter(item => excludeSet.has(item.name));
+      merged = merged.filter(item => !excludeSet.has(item.name));
+
+      console.log(`${ARTIFACT_TYPES[artifactType].label} (${merged.length} installable, ${excluded.length} excluded, from ${sources.length} sources):`);
       console.log('');
 
       const bySource = {};
@@ -88,6 +94,14 @@ async function artifact(args, flags = {}) {
           const desc = item.metadata?.description || '';
           const short = desc.length > 55 ? desc.slice(0, 52) + '...' : desc;
           console.log(`  ${item.name}${short ? ' — ' + short : ''}`);
+        }
+        console.log('');
+      }
+
+      if (excluded.length > 0) {
+        console.log(`[excluded] (${excluded.length})`);
+        for (const item of excluded.sort((a, b) => a.name.localeCompare(b.name))) {
+          console.log(`  ${item.name} (${item.sourceName})`);
         }
         console.log('');
       }
