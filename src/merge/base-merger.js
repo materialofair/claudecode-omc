@@ -97,11 +97,12 @@ function detectConflicts(sourcesArray) {
 }
 
 /**
- * Resolve conflicts using 4-tier strategy:
+ * Resolve conflicts using 5-tier strategy:
  * 1. User config preferences
- * 2. SemVer (highest version wins)
- * 3. Local priority (local > upstream)
- * 4. Namespace (keep both with prefixes)
+ * 2. Quality score (>10 point gap wins)
+ * 3. SemVer (highest version wins)
+ * 4. Local priority (local > upstream)
+ * 5. Source priority (lower priority number wins)
  */
 function resolveConflicts(conflicts, config = {}) {
   const resolutions = [];
@@ -131,7 +132,28 @@ function resolveConflicts(conflicts, config = {}) {
       }
     }
 
-    // Tier 2: SemVer comparison
+    // Tier 2: Quality score (if evaluateSkillQuality is available)
+    try {
+      const { evaluateSkillQuality } = require('../utils/quality');
+      const scored = versions.map(v => ({
+        ...v,
+        _quality: v.path ? evaluateSkillQuality(v).score : 0,
+      }));
+      const sorted = [...scored].sort((a, b) => b._quality - a._quality);
+      // Only use quality if there's a meaningful gap (>10 points)
+      if (sorted.length >= 2 && sorted[0]._quality - sorted[1]._quality > 10) {
+        resolutions.push({
+          name, type: 'exact_name', resolution: 'quality-score',
+          winner: sorted[0], rejected: sorted.slice(1),
+          qualityScores: sorted.map(s => ({ source: s.sourceName, score: s._quality })),
+        });
+        continue;
+      }
+    } catch {
+      // quality module not available, skip this tier
+    }
+
+    // Tier 3: SemVer comparison
     const withVersions = versions.filter(v => v.metadata?.version);
     if (withVersions.length === versions.length && versions.length > 1) {
       const sorted = [...versions].sort((a, b) =>
@@ -146,7 +168,7 @@ function resolveConflicts(conflicts, config = {}) {
       }
     }
 
-    // Tier 3: Local priority
+    // Tier 4: Local priority
     const localVersion = versions.find(v => v.sourceName === 'local');
     if (localVersion) {
       resolutions.push({

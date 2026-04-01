@@ -33,6 +33,7 @@ function loadSourcesForType(artifactType, root) {
   if (!loader) return sources;
 
   for (const [name, src] of ordered) {
+    if (src.role === 'reference') continue;
     if (!(src.artifacts || []).includes(artifactType)) continue;
     const dir = getSourceArtifactDir(name, artifactType, root);
     if (!fs.existsSync(dir)) continue;
@@ -151,4 +152,4 @@ async function artifact(args, flags = {}) {
   }
 }
 
-module.exports = { artifact };
+module.exports = { artifact, loadSourcesForType };
