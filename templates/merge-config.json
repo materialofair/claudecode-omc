@@ -4,7 +4,8 @@
   "allow_namespacing": false,
   "sources": [
     { "name": "local", "priority": 1 },
-    { "name": "upstream", "priority": 2 }
+    { "name": "oh-my-claudecode", "priority": 2 },
+    { "name": "superpowers", "priority": 3 }
   ],
   "preferences": {}
 }

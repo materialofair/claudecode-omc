@@ -11,13 +11,32 @@ function getDefaultConfig() {
     active: 'local',
     sources: {
       local: {
-        path: '.local/skills',
+        path: '.local',
         priority: 1,
+        artifacts: ['skills', 'agents', 'hooks', 'commands', 'claude-md', 'settings', 'hud'],
       },
-      upstream: {
+      'oh-my-claudecode': {
         remote: 'https://github.com/Yeachan-Heo/oh-my-claudecode.git',
         ref: 'main',
         priority: 2,
+        artifacts: ['skills', 'agents', 'hooks'],
+        mapping: {
+          skills: 'skills',
+          agents: 'agents',
+          hooks: 'hooks',
+        },
+      },
+      superpowers: {
+        remote: 'https://github.com/obra/superpowers.git',
+        ref: 'main',
+        priority: 3,
+        artifacts: ['skills', 'agents', 'hooks', 'commands'],
+        mapping: {
+          skills: 'skills',
+          agents: 'agents',
+          hooks: 'hooks',
+          commands: 'commands',
+        },
       },
     },
     lastSync: null,
@@ -70,12 +89,41 @@ async function recordSync(success, details = {}) {
   await writeConfig(config);
 }
 
+async function addSource(name, remote, options = {}) {
+  const config = readConfig();
+  if (config.sources[name]) {
+    throw new Error(`Source "${name}" already exists`);
+  }
+  config.sources[name] = {
+    remote,
+    ref: options.ref || 'main',
+    priority: options.priority || Object.keys(config.sources).length + 1,
+    artifacts: options.artifacts || ['skills'],
+    mapping: options.mapping || {},
+  };
+  await writeConfig(config);
+}
+
+async function removeSource(name) {
+  const config = readConfig();
+  if (!config.sources[name]) {
+    throw new Error(`Source "${name}" not found`);
+  }
+  if (name === 'local') {
+    throw new Error('Cannot remove the local source');
+  }
+  delete config.sources[name];
+  await writeConfig(config);
+}
+
 module.exports = {
   readConfig,
   writeConfig,
   getActiveSource,
   setActiveSource,
   recordSync,
+  addSource,
+  removeSource,
   CONFIG_DIR,
   CONFIG_PATH,
 };

@@ -5,19 +5,24 @@ const COMMANDS = {
   doctor: () => require('./doctor'),
   source: () => require('./source'),
   skill: () => require('./skill'),
+  artifact: () => require('./artifact'),
 };
 
 function showHelp() {
-  console.log('claudecode-omc — Multi-source Claude Code skill manager');
+  console.log('claudecode-omc — Claude Code harness manager');
   console.log('');
   console.log('Usage: omc-manage <command> [options]');
   console.log('');
   console.log('Commands:');
-  console.log('  setup   [--scope user|project] [--force] [--dry-run]  Install merged skills');
-  console.log('  doctor                                                 Health checks');
-  console.log('  source  list|sync|status|set                           Manage sources');
-  console.log('  skill   list|prefer|conflicts                          Manage skills');
-  console.log('  help                                                   Show this help');
+  console.log('  setup     [--scope user|project] [--force] [--dry-run] [--type <type>]');
+  console.log('            Install merged artifacts (skills, agents, hooks, commands, etc.)');
+  console.log('  doctor    Health checks for all artifact types');
+  console.log('  source    list|add|remove|sync|status — manage sources');
+  console.log('  artifact  list|prefer|conflicts [--type <type>] — manage artifacts');
+  console.log('  skill     list|prefer|conflicts — alias for artifact --type skills');
+  console.log('  help      Show this help');
+  console.log('');
+  console.log('Artifact types: skills, agents, hooks, commands, claude-md, settings, hud');
 }
 
 async function main(argv) {
@@ -39,22 +44,30 @@ async function main(argv) {
   const handler = mod[command];
   const args = argv.slice(1);
 
-  // Parse common flags
+  // Parse flags
   const flags = {};
   const positional = [];
-  for (const arg of args) {
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
     if (arg === '--force') flags.force = true;
     else if (arg === '--dry-run') flags.dryRun = true;
-    else if (arg.startsWith('--scope=')) flags.scope = arg.split('=')[1];
-    else if (arg === '--scope') flags._nextIsScope = true;
-    else if (flags._nextIsScope) { flags.scope = arg; delete flags._nextIsScope; }
-    else if (arg === '--fork') flags.fork = true;
-    else if (arg === '--upstream') flags.upstream = true;
-    else if (arg === '--all') flags.all = true;
     else if (arg === '--verbose') flags.verbose = true;
-    else if (arg.startsWith('--local=')) flags.local = arg.split('=')[1];
-    else if (arg === '--local') flags._nextIsLocal = true;
-    else if (flags._nextIsLocal) { flags.local = arg; delete flags._nextIsLocal; }
+    else if (arg === '--all') flags.all = true;
+    else if (arg === '--upstream') flags.upstream = true;
+    else if (arg === '--local') {
+      if (args[i + 1] && !args[i + 1].startsWith('--')) {
+        flags.local = args[++i];
+      } else {
+        flags.local = true;
+      }
+    }
+    else if (arg === '--scope' && args[i + 1]) flags.scope = args[++i];
+    else if (arg.startsWith('--scope=')) flags.scope = arg.split('=')[1];
+    else if (arg === '--type' && args[i + 1]) flags.type = args[++i];
+    else if (arg.startsWith('--type=')) flags.type = arg.split('=')[1];
+    else if (arg === '--ref' && args[i + 1]) flags.ref = args[++i];
+    else if (arg === '--priority' && args[i + 1]) flags.priority = parseInt(args[++i], 10);
+    else if (arg === '--artifacts' && args[i + 1]) flags.artifacts = args[++i].split(',');
     else positional.push(arg);
   }
 
