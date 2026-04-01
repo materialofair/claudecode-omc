@@ -1,0 +1,35 @@
+{
+  "name": "claudecode-omc",
+  "version": "0.1.0",
+  "description": "Multi-source Claude Code skill manager for oh-my-claudecode",
+  "bin": {
+    "omc-manage": "bin/omc-manage.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "scripts",
+    "templates",
+    "README.md"
+  ],
+  "scripts": {
+    "setup": "node bin/omc-manage.js setup",
+    "doctor": "node bin/omc-manage.js doctor",
+    "source:list": "node bin/omc-manage.js source list",
+    "source:sync": "node bin/omc-manage.js source sync --all",
+    "source:status": "node bin/omc-manage.js source status",
+    "skill:list": "node bin/omc-manage.js skill list",
+    "skill:conflicts": "node bin/omc-manage.js skill conflicts"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "claude-code",
+    "oh-my-claudecode",
+    "skills",
+    "multi-source",
+    "ai-agent"
+  ],
+  "license": "MIT"
+}

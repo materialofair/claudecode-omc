@@ -1,0 +1,7 @@
+node_modules/
+.upstream/
+.omc/
+.omc-manage/
+.omcodex/
+.claude/
+*.tgz

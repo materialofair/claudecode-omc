@@ -1,0 +1,10 @@
+{
+  "merge_strategy": "version-priority",
+  "auto_merge": true,
+  "allow_namespacing": false,
+  "sources": [
+    { "name": "local", "priority": 1 },
+    { "name": "upstream", "priority": 2 }
+  ],
+  "preferences": {}
+}
