@@ -36,7 +36,12 @@ function getSourceArtifactDir(sourceName, artifactType, root) {
 
   if (isDistributionMode()) {
     if (sourceName === 'local') {
-      return path.join(USER_DATA_DIR, 'local', artifactType);
+      // Check user-customized local first, then fall back to bundled .local/
+      const userLocal = path.join(USER_DATA_DIR, 'local', artifactType);
+      if (fs.existsSync(userLocal)) {
+        return userLocal;
+      }
+      return path.join(root, '.local', artifactType);
     }
     // Check user-synced first, then fall back to bundled
     const synced = path.join(USER_DATA_DIR, 'upstream', sourceName, artifactType);
