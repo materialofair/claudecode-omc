@@ -49,6 +49,29 @@ function getLoader(artifactType) {
   }
 }
 
+function collectSourcesForType(artifactType, orderedSources, root) {
+  const sourcesForType = [];
+
+  for (const [name, src] of orderedSources) {
+    // Skip reference-only sources (e.g. anthropic-skills) — they provide
+    // evaluation standards, not installable artifacts.
+    if (src.role === 'reference') continue;
+    const declaredArtifacts = src.artifacts || [];
+    if (!declaredArtifacts.includes(artifactType)) continue;
+
+    const dir = getSourceArtifactDir(name, artifactType, root);
+    if (fs.existsSync(dir)) {
+      sourcesForType.push({ name, dir, priority: src.priority });
+    }
+  }
+
+  if (sourcesForType.length === 0 && artifactType === 'claude-md') {
+    return collectSourcesForType('guidelines', orderedSources, root);
+  }
+
+  return sourcesForType;
+}
+
 async function installNameBasedArtifacts(artifactType, sources, mergeConfig, installTarget, flags) {
   const loader = getLoader(artifactType);
   if (!loader) return { count: 0, total: 0 };
@@ -137,7 +160,7 @@ async function installHooks(sources, installTarget, flags) {
   return result;
 }
 
-async function installClaudeMd(sources, installTarget, flags) {
+async function installSectionDocument(artifactType, sources, installTarget, flags) {
   const sections = [];
   // Collect in reverse priority order (lowest priority first)
   const sorted = [...sources].reverse();
@@ -159,7 +182,15 @@ async function installClaudeMd(sources, installTarget, flags) {
   let finalContent;
   if (fs.existsSync(installTarget)) {
     const existing = fs.readFileSync(installTarget, 'utf8');
-    finalContent = mergeIntoExisting(existing, sections);
+    finalContent = mergeIntoExisting(existing, sections, {
+      markerNamespace: artifactType,
+      legacyMarkerKeys: (sourceName) => {
+        if (artifactType === 'guidelines') {
+          return [sourceName, `claude-md:${sourceName}`];
+        }
+        return [sourceName];
+      },
+    });
   } else {
     finalContent = assembleSections(sections);
   }
@@ -238,20 +269,7 @@ async function setup(args, flags = {}) {
       continue;
     }
 
-    // Collect sources that have this artifact type
-    const sourcesForType = [];
-    for (const [name, src] of orderedSources) {
-      // Skip reference-only sources (e.g. anthropic-skills) — they provide
-      // evaluation standards, not installable artifacts.
-      if (src.role === 'reference') continue;
-      const declaredArtifacts = src.artifacts || [];
-      if (!declaredArtifacts.includes(artifactType)) continue;
-
-      const dir = getSourceArtifactDir(name, artifactType, root);
-      if (fs.existsSync(dir)) {
-        sourcesForType.push({ name, dir, priority: src.priority });
-      }
-    }
+    const sourcesForType = collectSourcesForType(artifactType, orderedSources, root);
 
     const installTarget = (artifactType === 'skills' && scope === 'project')
       ? path.join(process.cwd(), '.claude', 'skills')
@@ -273,7 +291,7 @@ async function setup(args, flags = {}) {
         result = await installHooks(sourcesForType, installTarget, flags);
         break;
       case 'section-concat':
-        result = await installClaudeMd(sourcesForType, installTarget, flags);
+        result = await installSectionDocument(artifactType, sourcesForType, installTarget, flags);
         break;
       case 'deep-merge':
         result = await installSettings(sourcesForType, installTarget, flags);

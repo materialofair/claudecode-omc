@@ -1,6 +1,8 @@
 const path = require('path');
 const os = require('os');
 
+const CLAUDE_MD_TARGET = path.join(os.homedir(), '.claude', 'CLAUDE.md');
+
 const ARTIFACT_TYPES = {
   skills: {
     label: 'Skills',
@@ -35,9 +37,17 @@ const ARTIFACT_TYPES = {
     metadataFile: null,
     mergeStrategy: 'name-based',
   },
+  guidelines: {
+    label: 'Guidelines',
+    installTarget: CLAUDE_MD_TARGET,
+    sourceSubdir: 'guidelines',
+    format: 'single-file',
+    metadataFile: null,
+    mergeStrategy: 'section-concat',
+  },
   'claude-md': {
-    label: 'CLAUDE.md',
-    installTarget: path.join(os.homedir(), '.claude', 'CLAUDE.md'),
+    label: 'CLAUDE.md (legacy)',
+    installTarget: CLAUDE_MD_TARGET,
     sourceSubdir: 'claude-md',
     format: 'single-file',
     metadataFile: null,

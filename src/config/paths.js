@@ -34,6 +34,9 @@ function isDistributionMode() {
 function getSourceArtifactDir(sourceName, artifactType, root) {
   root = root || getProjectRoot();
 
+  const legacyArtifactType = artifactType === 'guidelines' ? 'claude-md' : null;
+  const modernArtifactType = artifactType === 'claude-md' ? 'guidelines' : null;
+
   if (isDistributionMode()) {
     if (sourceName === 'local') {
       // Check user-customized local first, then fall back to bundled .local/
@@ -41,21 +44,109 @@ function getSourceArtifactDir(sourceName, artifactType, root) {
       if (fs.existsSync(userLocal)) {
         return userLocal;
       }
-      return path.join(root, '.local', artifactType);
+      if (legacyArtifactType) {
+        const userLegacy = path.join(USER_DATA_DIR, 'local', legacyArtifactType);
+        if (fs.existsSync(userLegacy)) {
+          return userLegacy;
+        }
+      }
+      if (modernArtifactType) {
+        const userModern = path.join(USER_DATA_DIR, 'local', modernArtifactType);
+        if (fs.existsSync(userModern)) {
+          return userModern;
+        }
+      }
+      const bundledLocal = path.join(root, '.local', artifactType);
+      if (fs.existsSync(bundledLocal)) {
+        return bundledLocal;
+      }
+      if (legacyArtifactType) {
+        const bundledLegacy = path.join(root, '.local', legacyArtifactType);
+        if (fs.existsSync(bundledLegacy)) {
+          return bundledLegacy;
+        }
+      }
+      if (modernArtifactType) {
+        const bundledModern = path.join(root, '.local', modernArtifactType);
+        if (fs.existsSync(bundledModern)) {
+          return bundledModern;
+        }
+      }
+      return bundledLocal;
     }
     // Check user-synced first, then fall back to bundled
     const synced = path.join(USER_DATA_DIR, 'upstream', sourceName, artifactType);
     if (fs.existsSync(synced)) {
       return synced;
     }
-    return path.join(root, 'bundled', 'upstream', sourceName, artifactType);
+    if (legacyArtifactType) {
+      const syncedLegacy = path.join(USER_DATA_DIR, 'upstream', sourceName, legacyArtifactType);
+      if (fs.existsSync(syncedLegacy)) {
+        return syncedLegacy;
+      }
+    }
+    if (modernArtifactType) {
+      const syncedModern = path.join(USER_DATA_DIR, 'upstream', sourceName, modernArtifactType);
+      if (fs.existsSync(syncedModern)) {
+        return syncedModern;
+      }
+    }
+    const bundled = path.join(root, 'bundled', 'upstream', sourceName, artifactType);
+    if (fs.existsSync(bundled)) {
+      return bundled;
+    }
+    if (legacyArtifactType) {
+      const bundledLegacy = path.join(root, 'bundled', 'upstream', sourceName, legacyArtifactType);
+      if (fs.existsSync(bundledLegacy)) {
+        return bundledLegacy;
+      }
+    }
+    if (modernArtifactType) {
+      const bundledModern = path.join(root, 'bundled', 'upstream', sourceName, modernArtifactType);
+      if (fs.existsSync(bundledModern)) {
+        return bundledModern;
+      }
+    }
+    return bundled;
   }
 
   // Dev mode
   if (sourceName === 'local') {
-    return path.join(root, '.local', artifactType);
+    const localDir = path.join(root, '.local', artifactType);
+    if (fs.existsSync(localDir)) {
+      return localDir;
+    }
+    if (legacyArtifactType) {
+      const legacyDir = path.join(root, '.local', legacyArtifactType);
+      if (fs.existsSync(legacyDir)) {
+        return legacyDir;
+      }
+    }
+    if (modernArtifactType) {
+      const modernDir = path.join(root, '.local', modernArtifactType);
+      if (fs.existsSync(modernDir)) {
+        return modernDir;
+      }
+    }
+    return localDir;
   }
-  return path.join(root, '.upstream', sourceName, artifactType);
+  const upstreamDir = path.join(root, '.upstream', sourceName, artifactType);
+  if (fs.existsSync(upstreamDir)) {
+    return upstreamDir;
+  }
+  if (legacyArtifactType) {
+    const legacyDir = path.join(root, '.upstream', sourceName, legacyArtifactType);
+    if (fs.existsSync(legacyDir)) {
+      return legacyDir;
+    }
+  }
+  if (modernArtifactType) {
+    const modernDir = path.join(root, '.upstream', sourceName, modernArtifactType);
+    if (fs.existsSync(modernDir)) {
+      return modernDir;
+    }
+  }
+  return upstreamDir;
 }
 
 /**

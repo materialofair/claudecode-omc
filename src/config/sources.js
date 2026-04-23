@@ -13,7 +13,7 @@ function getDefaultConfig() {
       local: {
         path: '.local',
         priority: 1,
-        artifacts: ['skills', 'agents', 'hooks', 'commands', 'claude-md', 'settings', 'hud'],
+        artifacts: ['skills', 'agents', 'hooks', 'commands', 'guidelines', 'settings', 'hud'],
       },
       'oh-my-claudecode': {
         remote: 'https://github.com/Yeachan-Heo/oh-my-claudecode.git',
@@ -56,14 +56,36 @@ function getDefaultConfig() {
   };
 }
 
+function dedupeArtifacts(artifacts) {
+  return [...new Set((artifacts || []).filter(Boolean))];
+}
+
+function normalizeConfig(config) {
+  const normalized = config || getDefaultConfig();
+  normalized.sources = normalized.sources || {};
+
+  for (const [name, source] of Object.entries(normalized.sources)) {
+    source.artifacts = dedupeArtifacts(source.artifacts);
+
+    // Migrate local prompt guidance from legacy claude-md to guidelines.
+    if (name === 'local' && source.artifacts.includes('claude-md') && !source.artifacts.includes('guidelines')) {
+      source.artifacts = source.artifacts.map((artifact) => (
+        artifact === 'claude-md' ? 'guidelines' : artifact
+      ));
+    }
+  }
+
+  return normalized;
+}
+
 function readConfig() {
   if (!fs.existsSync(CONFIG_PATH)) {
-    return getDefaultConfig();
+    return normalizeConfig(getDefaultConfig());
   }
   try {
-    return JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
+    return normalizeConfig(JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8')));
   } catch {
-    return getDefaultConfig();
+    return normalizeConfig(getDefaultConfig());
   }
 }
 
@@ -71,7 +93,7 @@ async function writeConfig(config) {
   if (!fs.existsSync(CONFIG_DIR)) {
     await fsp.mkdir(CONFIG_DIR, { recursive: true });
   }
-  await fsp.writeFile(CONFIG_PATH, JSON.stringify(config, null, 2) + '\n', 'utf8');
+  await fsp.writeFile(CONFIG_PATH, JSON.stringify(normalizeConfig(config), null, 2) + '\n', 'utf8');
 }
 
 function getActiveSource() {
@@ -112,6 +134,7 @@ async function addSource(name, remote, options = {}) {
     priority: options.priority || Object.keys(config.sources).length + 1,
     artifacts: options.artifacts || ['skills'],
     mapping: options.mapping || {},
+    role: options.role,
   };
   await writeConfig(config);
 }
@@ -136,6 +159,7 @@ module.exports = {
   recordSync,
   addSource,
   removeSource,
+  normalizeConfig,
   CONFIG_DIR,
   CONFIG_PATH,
 };

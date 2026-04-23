@@ -20,6 +20,26 @@ async function copyDirRecursive(src, dest) {
   }
 }
 
+function parseMappingFlag(mappingFlag) {
+  if (!mappingFlag) return {};
+
+  const entries = mappingFlag
+    .split(',')
+    .map(part => part.trim())
+    .filter(Boolean);
+
+  const mapping = {};
+  for (const entry of entries) {
+    const [artifactType, ...rest] = entry.split('=');
+    const target = rest.join('=').trim();
+    if (!artifactType || !target) {
+      throw new Error(`Invalid mapping entry "${entry}". Use artifact=path.`);
+    }
+    mapping[artifactType.trim()] = target;
+  }
+  return mapping;
+}
+
 async function syncRemoteSource(sourceName, sourceConfig, root) {
   console.log(`  Syncing ${sourceName} from ${sourceConfig.remote} (${sourceConfig.ref})...`);
 
@@ -85,6 +105,15 @@ async function source(args, flags = {}) {
         console.log(`${marker} ${name} (priority ${src.priority})`);
         console.log(`  ${location}`);
         console.log(`  artifacts: ${(src.artifacts || []).join(', ')}`);
+        if (src.role) {
+          console.log(`  role: ${src.role}`);
+        }
+        if (src.mapping && Object.keys(src.mapping).length > 0) {
+          const mapping = Object.entries(src.mapping)
+            .map(([artifact, target]) => `${artifact}=${target}`)
+            .join(', ');
+          console.log(`  mapping: ${mapping}`);
+        }
         console.log('');
       }
       break;
@@ -94,12 +123,14 @@ async function source(args, flags = {}) {
       const name = args[1];
       const remote = args[2];
       if (!name || !remote) {
-        throw new Error('Usage: omc-manage source add <name> <remote-url> [--ref main] [--priority N] [--artifacts skills,agents]');
+        throw new Error('Usage: omc-manage source add <name> <remote-url> [--ref main] [--priority N] [--artifacts skills,agents,guidelines] [--mapping guidelines=CLAUDE.md] [--role guidelines]');
       }
       await addSource(name, remote, {
         ref: flags.ref,
         priority: flags.priority,
         artifacts: flags.artifacts,
+        mapping: parseMappingFlag(flags.mapping),
+        role: flags.role,
       });
       console.log(`Source "${name}" added.`);
       console.log(`Run "omc-manage source sync ${name}" to fetch artifacts.`);
@@ -167,6 +198,9 @@ async function source(args, flags = {}) {
 
       for (const [name, src] of Object.entries(config.sources)) {
         console.log(`[${name}] (priority ${src.priority})`);
+        if (src.role) {
+          console.log(`  role: ${src.role}`);
+        }
         const artifacts = src.artifacts || [];
         for (const type of artifacts) {
           const dir = getSourceArtifactDir(name, type, root);

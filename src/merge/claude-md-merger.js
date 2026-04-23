@@ -25,28 +25,51 @@ function assembleSections(sections) {
   return sections.map(s => s.content).join('\n\n').trimEnd() + '\n';
 }
 
+function getMarkers(markerKey) {
+  return {
+    start: `<!-- OMC:${markerKey}:START -->`,
+    end: `<!-- OMC:${markerKey}:END -->`,
+  };
+}
+
+function replaceFirstMatchingBlock(result, markerKeys, block) {
+  for (const markerKey of markerKeys) {
+    const { start, end } = getMarkers(markerKey);
+    const startIdx = result.indexOf(start);
+    const endIdx = result.indexOf(end);
+
+    if (startIdx !== -1 && endIdx !== -1) {
+      return result.slice(0, startIdx) + block + result.slice(endIdx + end.length);
+    }
+  }
+
+  return null;
+}
+
 /**
  * Merge new sections into an existing CLAUDE.md
  * Wraps each source block in OMC markers to allow idempotent updates
  */
-function mergeIntoExisting(existing, sections) {
+function mergeIntoExisting(existing, sections, options = {}) {
+  const markerNamespace = options.markerNamespace || 'claude-md';
   let result = existing;
 
   for (const { sourceName, content } of sections) {
-    const startMarker = `<!-- OMC:${sourceName}:START -->`;
-    const endMarker = `<!-- OMC:${sourceName}:END -->`;
+    const markerKey = `${markerNamespace}:${sourceName}`;
+    const { start: startMarker, end: endMarker } = getMarkers(markerKey);
     const block = `${startMarker}\n${content.trimEnd()}\n${endMarker}`;
+    const legacyMarkerKeys = options.legacyMarkerKeys
+      ? options.legacyMarkerKeys(sourceName)
+      : [sourceName];
+    const replaced = replaceFirstMatchingBlock(result, [markerKey, ...legacyMarkerKeys], block);
 
-    const startIdx = result.indexOf(startMarker);
-    const endIdx = result.indexOf(endMarker);
-
-    if (startIdx !== -1 && endIdx !== -1) {
-      // Replace existing block
-      result = result.slice(0, startIdx) + block + result.slice(endIdx + endMarker.length);
-    } else {
-      // Append new block
-      result = result.trimEnd() + '\n\n' + block + '\n';
+    if (replaced !== null) {
+      result = replaced;
+      continue;
     }
+
+    // Append new block
+    result = result.trimEnd() + '\n\n' + block + '\n';
   }
 
   return result;

@@ -11,6 +11,19 @@ const { loadAgentsFromSource } = require('../merge/agent-merger');
 const { loadCommandsFromSource } = require('../merge/command-merger');
 const { loadHookFilesFromSource } = require('../merge/hook-merger');
 const { loadFilesFromSource } = require('../merge/file-merger');
+const { loadClaudeMd } = require('../merge/claude-md-merger');
+
+function loadSectionDocumentFromSource(sourceDir) {
+  const content = loadClaudeMd(sourceDir);
+  if (!content) return [];
+  return [{
+    name: 'CLAUDE.md',
+    path: sourceDir,
+    metadata: {
+      description: `${content.length} chars of prompt guidelines`,
+    },
+  }];
+}
 
 function getLoader(artifactType) {
   switch (artifactType) {
@@ -18,6 +31,8 @@ function getLoader(artifactType) {
     case 'agents': return loadAgentsFromSource;
     case 'commands': return loadCommandsFromSource;
     case 'hooks': return loadHookFilesFromSource;
+    case 'guidelines': return loadSectionDocumentFromSource;
+    case 'claude-md': return loadSectionDocumentFromSource;
     case 'hud': return loadFilesFromSource;
     default: return null;
   }
@@ -42,6 +57,11 @@ function loadSourcesForType(artifactType, root) {
       sources.push({ name, items });
     }
   }
+
+  if (sources.length === 0 && artifactType === 'claude-md') {
+    return loadSourcesForType('guidelines', root);
+  }
+
   return sources;
 }
 
@@ -59,6 +79,23 @@ async function artifact(args, flags = {}) {
       const sources = loadSourcesForType(artifactType, root);
       if (sources.length === 0) {
         console.log(`No ${artifactType} found. Run: omc-manage source sync`);
+        return;
+      }
+
+      const artifactConfig = ARTIFACT_TYPES[artifactType];
+      if (artifactConfig.mergeStrategy === 'section-concat') {
+        const total = sources.reduce((sum, source) => sum + source.items.length, 0);
+        console.log(`${artifactConfig.label} (${total} installable, additive merge, from ${sources.length} sources):`);
+        console.log('');
+
+        for (const source of sources) {
+          console.log(`[${source.name}] (${source.items.length})`);
+          for (const item of source.items) {
+            const desc = item.metadata?.description || '';
+            console.log(`  ${item.name}${desc ? ' — ' + desc : ''}`);
+          }
+          console.log('');
+        }
         return;
       }
 
@@ -109,6 +146,9 @@ async function artifact(args, flags = {}) {
     }
 
     case 'prefer': {
+      if (ARTIFACT_TYPES[artifactType].mergeStrategy === 'section-concat') {
+        throw new Error(`${artifactType} is merged additively and does not support source preferences.`);
+      }
       const name = args[1];
       const source = args[2];
       if (!name || !source) {
@@ -126,6 +166,13 @@ async function artifact(args, flags = {}) {
     }
 
     case 'conflicts': {
+      if (ARTIFACT_TYPES[artifactType].mergeStrategy === 'section-concat') {
+        console.log(`${ARTIFACT_TYPES[artifactType].label} Conflict Report`);
+        console.log('='.repeat(40));
+        console.log('Section-concat artifacts are merged additively; no conflicts to resolve.');
+        return;
+      }
+
       const sources = loadSourcesForType(artifactType, root);
       if (sources.length < 2) {
         console.log(`Need at least 2 sources for ${artifactType}. Run: omc-manage source sync`);
