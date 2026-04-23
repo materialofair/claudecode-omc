@@ -2,6 +2,7 @@
 const fs = require('fs');
 const fsp = require('fs/promises');
 const path = require('path');
+const os = require('os');
 const { getProjectRoot, getSourceArtifactDir, getInstallTarget, getMergeConfigPath, getReportDir } = require('../config/paths');
 const { readConfig } = require('../config/sources');
 const { getArtifactTypeNames, ARTIFACT_TYPES } = require('../config/artifact-types');
@@ -15,6 +16,30 @@ const { loadSettingsFragment, mergeSettingsFragments } = require('../merge/setti
 const { loadFilesFromSource } = require('../merge/file-merger');
 const { evaluateSkillQuality } = require('../utils/quality');
 const { copyDirRecursive } = require('./source');
+
+const OMC_VERSION_PATH = path.join(os.homedir(), '.claude', '.omc-version.json');
+
+function getPackageVersion(root) {
+  try {
+    const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+    return pkg.version || '0.0.0';
+  } catch {
+    return '0.0.0';
+  }
+}
+
+async function writeInstallMetadata(root) {
+  const now = new Date().toISOString();
+  const metadata = {
+    version: getPackageVersion(root),
+    installedAt: now,
+    installMethod: fs.existsSync(path.join(root, '.git')) ? 'local-dev' : 'npm',
+    lastCheckAt: now,
+  };
+
+  await fsp.mkdir(path.dirname(OMC_VERSION_PATH), { recursive: true });
+  await fsp.writeFile(OMC_VERSION_PATH, JSON.stringify(metadata, null, 2) + '\n', 'utf8');
+}
 
 async function copyDirectory(src, dest, options = {}) {
   if (!fs.existsSync(src)) return 0;
@@ -237,7 +262,9 @@ async function setup(args, flags = {}) {
   const root = getProjectRoot();
   const config = readConfig();
   const scope = flags.scope || 'user';
-  const typeFilter = flags.type ? flags.type.split(',') : null;
+  const typeFilter = flags.type
+    ? [...new Set(flags.type.split(',').map(type => (type === 'claude-md' ? 'guidelines' : type)))]
+    : null;
 
   console.log('claudecode-omc setup');
   console.log('====================');
@@ -256,7 +283,7 @@ async function setup(args, flags = {}) {
   const orderedSources = Object.entries(config.sources)
     .sort(([, a], [, b]) => a.priority - b.priority);
 
-  const allTypes = getArtifactTypeNames();
+  const allTypes = getArtifactTypeNames().filter(type => type !== 'claude-md');
   const typesToInstall = typeFilter || allTypes;
   let step = 0;
   const totalSteps = typesToInstall.length;
@@ -309,6 +336,10 @@ async function setup(args, flags = {}) {
     if (result.conflicts > 0) {
       console.log(`    resolved ${result.conflicts} conflicts`);
     }
+  }
+
+  if (!flags.dryRun && scope === 'user') {
+    await writeInstallMetadata(root);
   }
 
   console.log('\nDone.');

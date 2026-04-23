@@ -71,7 +71,12 @@ async function doctor() {
   console.log('');
 
   console.log('Installation:');
-  for (const typeName of getArtifactTypeNames()) {
+  const typeNames = getArtifactTypeNames().filter(typeName => {
+    if (typeName !== 'claude-md') return true;
+    return !fs.existsSync(ARTIFACT_TYPES.guidelines.installTarget);
+  });
+
+  for (const typeName of typeNames) {
     const type = ARTIFACT_TYPES[typeName];
     const target = type.installTarget;
     if (fs.existsSync(target)) {
