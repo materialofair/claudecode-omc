@@ -9,6 +9,35 @@ function getProjectRoot() {
   return path.resolve(__dirname, '..', '..');
 }
 
+function getSourceRootDir(sourceName, root) {
+  root = root || getProjectRoot();
+
+  if (isDistributionMode()) {
+    if (sourceName === 'local') {
+      const userLocal = path.join(USER_DATA_DIR, 'local');
+      if (fs.existsSync(userLocal)) {
+        return userLocal;
+      }
+      return path.join(root, '.local');
+    }
+
+    const synced = path.join(USER_DATA_DIR, 'upstream', sourceName);
+    if (fs.existsSync(synced)) {
+      return synced;
+    }
+    return path.join(root, 'bundled', 'upstream', sourceName);
+  }
+
+  if (sourceName === 'local') {
+    return path.join(root, '.local');
+  }
+  return path.join(root, '.upstream', sourceName);
+}
+
+function getSourceMetadataDir(sourceName, root) {
+  return path.join(getSourceRootDir(sourceName, root), '.omc-source');
+}
+
 /**
  * Detect if running from an npm-installed package (no .git dir, has bundled/)
  */
@@ -222,6 +251,8 @@ function getReportDir(root) {
 module.exports = {
   getProjectRoot,
   isDistributionMode,
+  getSourceRootDir,
+  getSourceMetadataDir,
   getSourceArtifactDir,
   getSyncTargetDir,
   getSyncTempDir,

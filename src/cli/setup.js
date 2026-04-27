@@ -4,7 +4,7 @@ const fsp = require('fs/promises');
 const path = require('path');
 const os = require('os');
 const { getProjectRoot, getSourceArtifactDir, getInstallTarget, getMergeConfigPath, getReportDir } = require('../config/paths');
-const { readConfig } = require('../config/sources');
+const { readConfig, filterItemsByAllowlist } = require('../config/sources');
 const { getArtifactTypeNames, ARTIFACT_TYPES } = require('../config/artifact-types');
 const { detectConflicts, resolveConflicts, applyResolutions, generateReport } = require('../merge/base-merger');
 const { loadSkillsFromSource } = require('../merge/skill-merger');
@@ -18,6 +18,22 @@ const { evaluateSkillQuality } = require('../utils/quality');
 const { copyDirRecursive } = require('./source');
 
 const OMC_VERSION_PATH = path.join(os.homedir(), '.claude', '.omc-version.json');
+const OMC_CONFIG_PATH = path.join(os.homedir(), '.claude', '.omc-config.json');
+const OMC_INSTALL_MANIFEST_PATH = path.join(os.homedir(), '.claude', '.omc-install-manifest.json');
+const LEGACY_HOOK_PATHS = [
+  'hooks.json',
+  'hooks-cursor.json',
+  'run-hook.cmd',
+  'session-start',
+  'session-start.mjs',
+  'keyword-detector.mjs',
+  'persistent-mode.mjs',
+  'post-tool-use-failure.mjs',
+  'post-tool-use.mjs',
+  'pre-tool-use.mjs',
+  'stop-continuation.mjs',
+  'lib',
+];
 
 function getPackageVersion(root) {
   try {
@@ -39,6 +55,119 @@ async function writeInstallMetadata(root) {
 
   await fsp.mkdir(path.dirname(OMC_VERSION_PATH), { recursive: true });
   await fsp.writeFile(OMC_VERSION_PATH, JSON.stringify(metadata, null, 2) + '\n', 'utf8');
+}
+
+async function readJsonFile(filePath, fallback) {
+  try {
+    return JSON.parse(await fsp.readFile(filePath, 'utf8'));
+  } catch {
+    return fallback;
+  }
+}
+
+function uniq(values) {
+  return [...new Set(values)];
+}
+
+function getManagedMetadataPaths(scope) {
+  const baseDir = scope === 'project'
+    ? path.join(process.cwd(), '.claude')
+    : path.join(os.homedir(), '.claude');
+
+  return {
+    configPath: path.join(baseDir, '.omc-config.json'),
+    manifestPath: path.join(baseDir, '.omc-install-manifest.json'),
+  };
+}
+
+function existingRelativePaths(installTarget, candidates) {
+  return uniq(candidates).filter(relativePath => fs.existsSync(path.join(installTarget, relativePath)));
+}
+
+function inferLegacyManagedPaths(artifactType, installTarget, desiredPaths, extra = {}) {
+  if (!fs.existsSync(installTarget) || !fs.statSync(installTarget).isDirectory()) {
+    return [];
+  }
+
+  switch (artifactType) {
+    case 'skills': {
+      const candidates = [...desiredPaths, ...(extra.excludedNames || [])];
+      return existingRelativePaths(installTarget, candidates);
+    }
+    case 'agents': {
+      const candidates = [];
+      for (const relativePath of desiredPaths) {
+        candidates.push(relativePath);
+        candidates.push(`${relativePath}.md`);
+        if (relativePath.endsWith('.md')) {
+          candidates.push(relativePath.slice(0, -3));
+        }
+      }
+      return existingRelativePaths(installTarget, candidates);
+    }
+    case 'commands': {
+      const candidates = [...desiredPaths];
+      const entries = fs.readdirSync(installTarget);
+      for (const entry of entries) {
+        if (entry.startsWith('oh-my-claudecode:') && entry.endsWith('.md')) {
+          candidates.push(entry);
+        }
+      }
+      return existingRelativePaths(installTarget, candidates);
+    }
+    case 'hooks': {
+      return existingRelativePaths(installTarget, [...desiredPaths, ...LEGACY_HOOK_PATHS]);
+    }
+    case 'hud':
+      return existingRelativePaths(installTarget, desiredPaths);
+    default:
+      return [];
+  }
+}
+
+async function pruneManagedPaths(installTarget, previousPaths, desiredPaths, flags) {
+  if (!fs.existsSync(installTarget) || !fs.statSync(installTarget).isDirectory()) {
+    return 0;
+  }
+
+  const desiredSet = new Set(desiredPaths);
+  const toRemove = uniq(previousPaths)
+    .filter(relativePath => !desiredSet.has(relativePath))
+    .sort((a, b) => b.split(path.sep).length - a.split(path.sep).length);
+
+  if (toRemove.length === 0) return 0;
+
+  if (flags.dryRun) {
+    for (const relativePath of toRemove) {
+      console.log(`    would prune ${relativePath}`);
+    }
+    return toRemove.length;
+  }
+
+  for (const relativePath of toRemove) {
+    await fsp.rm(path.join(installTarget, relativePath), { recursive: true, force: true });
+  }
+
+  return toRemove.length;
+}
+
+async function writeOmcConfig(root, scope) {
+  if (scope !== 'user') return;
+
+  const now = new Date().toISOString();
+  const version = getPackageVersion(root);
+  const existing = await readJsonFile(OMC_CONFIG_PATH, {});
+  const next = {
+    ...existing,
+    configuredAt: existing.configuredAt || now,
+    updateRepository: 'materialofair/claudecode-omc',
+    updateBranch: 'main',
+    setupCompleted: now,
+    setupVersion: version,
+  };
+
+  await fsp.mkdir(path.dirname(OMC_CONFIG_PATH), { recursive: true });
+  await fsp.writeFile(OMC_CONFIG_PATH, JSON.stringify(next, null, 2) + '\n', 'utf8');
 }
 
 async function copyDirectory(src, dest, options = {}) {
@@ -81,12 +210,13 @@ function collectSourcesForType(artifactType, orderedSources, root) {
     // Skip reference-only sources (e.g. anthropic-skills) — they provide
     // evaluation standards, not installable artifacts.
     if (src.role === 'reference') continue;
+    if (src.installMode && src.installMode !== 'auto') continue;
     const declaredArtifacts = src.artifacts || [];
     if (!declaredArtifacts.includes(artifactType)) continue;
 
     const dir = getSourceArtifactDir(name, artifactType, root);
     if (fs.existsSync(dir)) {
-      sourcesForType.push({ name, dir, priority: src.priority });
+      sourcesForType.push({ name, dir, priority: src.priority, config: src });
     }
   }
 
@@ -102,8 +232,8 @@ async function installNameBasedArtifacts(artifactType, sources, mergeConfig, ins
   if (!loader) return { count: 0, total: 0 };
 
   const loaded = [];
-  for (const { name, dir } of sources) {
-    const items = loader(dir, name);
+  for (const { name, dir, config } of sources) {
+    const items = filterItemsByAllowlist(config, artifactType, loader(dir, name));
     if (items.length > 0) {
       loaded.push({ name, items });
     }
@@ -131,7 +261,13 @@ async function installNameBasedArtifacts(artifactType, sources, mergeConfig, ins
     for (const item of merged.sort((a, b) => a.name.localeCompare(b.name))) {
       console.log(`    ${item.name} (${item.sourceName})`);
     }
-    return { count: 0, total: merged.length, conflicts: conflicts.length };
+    return {
+      count: 0,
+      total: merged.length,
+      conflicts: conflicts.length,
+      managedPaths: merged.map(item => item.name),
+      excludedNames: excludeList,
+    };
   }
 
   await fsp.mkdir(installTarget, { recursive: true });
@@ -142,15 +278,24 @@ async function installNameBasedArtifacts(artifactType, sources, mergeConfig, ins
       const dest = path.join(installTarget, item.name);
       fileCount += await copyDirectory(item.path, dest, flags);
     } else {
-      // Single file copy
-      const dest = path.join(installTarget, item.name.includes('/') ? item.name : item.name);
+      // Single file copy. Loaders strip `.md` from item.name for matching/allowlist purposes;
+      // re-attach the source extension on disk so Claude Code's `*.md` loader picks them up.
+      const sourceExt = path.extname(item.path);
+      const destName = sourceExt && !item.name.endsWith(sourceExt) ? `${item.name}${sourceExt}` : item.name;
+      const dest = path.join(installTarget, destName);
       await fsp.mkdir(path.dirname(dest), { recursive: true });
       await fsp.copyFile(item.path, dest);
       fileCount += 1;
     }
   }
 
-  return { count: fileCount, total: merged.length, conflicts: conflicts.length };
+  return {
+    count: fileCount,
+    total: merged.length,
+    conflicts: conflicts.length,
+    managedPaths: merged.map(item => item.name),
+    excludedNames: excludeList,
+  };
 }
 
 async function installHooks(sources, installTarget, flags) {
@@ -182,6 +327,21 @@ async function installHooks(sources, installTarget, flags) {
     }
   }
 
+  const managedPaths = [...(result.managedPaths || []), 'hooks.json'];
+  if (sources.some(({ dir }) => hasHookLib(dir))) {
+    managedPaths.push('lib');
+  }
+  if (sources.some(({ dir }) => fs.existsSync(path.join(dir, 'hooks-cursor.json')))) {
+    managedPaths.push('hooks-cursor.json');
+  }
+  if (sources.some(({ dir }) => fs.existsSync(path.join(dir, 'run-hook.cmd')))) {
+    managedPaths.push('run-hook.cmd');
+  }
+  if (sources.some(({ dir }) => fs.existsSync(path.join(dir, 'session-start')))) {
+    managedPaths.push('session-start');
+  }
+
+  result.managedPaths = uniq(managedPaths);
   return result;
 }
 
@@ -201,7 +361,7 @@ async function installSectionDocument(artifactType, sources, installTarget, flag
     for (const s of sections) {
       console.log(`    section from: ${s.sourceName} (${s.content.length} chars)`);
     }
-    return { count: 0, total: sections.length };
+    return { count: 0, total: sections.length, managedPaths: [path.basename(installTarget)] };
   }
 
   let finalContent;
@@ -223,7 +383,7 @@ async function installSectionDocument(artifactType, sources, installTarget, flag
   await fsp.mkdir(path.dirname(installTarget), { recursive: true });
   await fsp.writeFile(installTarget, finalContent, 'utf8');
 
-  return { count: 1, total: sections.length };
+  return { count: 1, total: sections.length, managedPaths: [path.basename(installTarget)] };
 }
 
 async function installSettings(sources, installTarget, flags) {
@@ -241,7 +401,7 @@ async function installSettings(sources, installTarget, flags) {
     for (const f of fragments) {
       console.log(`    fragment from: ${f.sourceName} (${Object.keys(f.fragment).join(', ')})`);
     }
-    return { count: 0, total: fragments.length };
+    return { count: 0, total: fragments.length, managedPaths: [path.basename(installTarget)] };
   }
 
   let existing = {};
@@ -255,13 +415,14 @@ async function installSettings(sources, installTarget, flags) {
   await fsp.mkdir(path.dirname(installTarget), { recursive: true });
   await fsp.writeFile(installTarget, JSON.stringify(merged, null, 2) + '\n', 'utf8');
 
-  return { count: 1, total: fragments.length };
+  return { count: 1, total: fragments.length, managedPaths: [path.basename(installTarget)] };
 }
 
 async function setup(args, flags = {}) {
   const root = getProjectRoot();
   const config = readConfig();
   const scope = flags.scope || 'user';
+  const { manifestPath } = getManagedMetadataPaths(scope);
   const typeFilter = flags.type
     ? [...new Set(flags.type.split(',').map(type => (type === 'claude-md' ? 'guidelines' : type)))]
     : null;
@@ -285,6 +446,12 @@ async function setup(args, flags = {}) {
 
   const allTypes = getArtifactTypeNames().filter(type => type !== 'claude-md');
   const typesToInstall = typeFilter || allTypes;
+  const previousManifest = await readJsonFile(manifestPath, { artifacts: {} });
+  const nextManifest = {
+    updatedAt: new Date().toISOString(),
+    scope,
+    artifacts: {},
+  };
   let step = 0;
   const totalSteps = typesToInstall.length;
 
@@ -333,6 +500,31 @@ async function setup(args, flags = {}) {
       console.log(`    installed ${result.count} files (${result.total} items)`);
     }
 
+    if (typeConfig.format !== 'single-file' && typeConfig.format !== 'json') {
+      const previousPaths = previousManifest.artifacts?.[artifactType]?.paths;
+      const managedPaths = uniq(result.managedPaths || []);
+      const bootstrapPaths = previousPaths || inferLegacyManagedPaths(
+        artifactType,
+        installTarget,
+        managedPaths,
+        result,
+      );
+      const pruned = await pruneManagedPaths(installTarget, bootstrapPaths, managedPaths, flags);
+      if (pruned > 0) {
+        console.log(flags.dryRun ? `    would prune ${pruned} stale entries` : `    pruned ${pruned} stale entries`);
+      }
+
+      nextManifest.artifacts[artifactType] = {
+        target: installTarget,
+        paths: managedPaths,
+      };
+    } else {
+      nextManifest.artifacts[artifactType] = {
+        target: installTarget,
+        paths: result.managedPaths || [path.basename(installTarget)],
+      };
+    }
+
     if (result.conflicts > 0) {
       console.log(`    resolved ${result.conflicts} conflicts`);
     }
@@ -340,6 +532,11 @@ async function setup(args, flags = {}) {
 
   if (!flags.dryRun && scope === 'user') {
     await writeInstallMetadata(root);
+    await writeOmcConfig(root, scope);
+    await fsp.writeFile(manifestPath, JSON.stringify(nextManifest, null, 2) + '\n', 'utf8');
+  } else if (!flags.dryRun && scope === 'project') {
+    await fsp.mkdir(path.dirname(manifestPath), { recursive: true });
+    await fsp.writeFile(manifestPath, JSON.stringify(nextManifest, null, 2) + '\n', 'utf8');
   }
 
   console.log('\nDone.');

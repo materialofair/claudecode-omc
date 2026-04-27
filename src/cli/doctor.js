@@ -56,15 +56,36 @@ async function doctor() {
       const dir = getSourceArtifactDir(name, type, root);
       return fs.existsSync(dir);
     });
-    const status = name === 'local'
-      ? `${available.length}/${artifacts.length} types present`
-      : `${available.length}/${artifacts.length} types synced`;
-    check(`${name} (priority ${src.priority})`, () => {
+
+    const isPlanned = src.installMode && src.installMode !== 'auto';
+    const isReference = src.role === 'reference';
+    const tagBits = [`priority ${src.priority}`, `kind ${src.kind || 'content-repo'}`];
+    if (isPlanned) tagBits.push(`installMode ${src.installMode}`);
+    if (isReference) tagBits.push('role reference');
+    if (src.appliedProfile) tagBits.push(`profile ${src.appliedProfile}`);
+
+    if (isPlanned && !isReference) {
+      // Distribution-repo waiting for plan apply: surface it without claiming
+      // failure — sync may have already populated catalog manifests.
+      console.log(`  ○ ${name} (${tagBits.join(', ')}) — staged, run "omc-manage plan apply ${name}" to activate`);
+      if (available.length > 0) {
+        console.log(`    synced types: ${available.join(', ')}`);
+      }
+      continue;
+    }
+
+    check(`${name} (${tagBits.join(', ')})`, () => {
       return available.length > 0 ? true : 'not synced';
     });
     if (available.length > 0 && available.length < artifacts.length) {
       const missing = artifacts.filter(t => !available.includes(t));
       console.log(`    missing: ${missing.join(', ')}`);
+    }
+    if (src.allowlist && Object.keys(src.allowlist).length > 0) {
+      const allowlist = Object.entries(src.allowlist)
+        .map(([type, names]) => `${type}(${names.length})`)
+        .join(', ');
+      console.log(`    allowlist: ${allowlist}`);
     }
   }
 

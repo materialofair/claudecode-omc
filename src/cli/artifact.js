@@ -3,7 +3,7 @@ const fs = require('fs');
 const fsp = require('fs/promises');
 const path = require('path');
 const { getProjectRoot, getSourceArtifactDir, getMergeConfigPath, getReportDir } = require('../config/paths');
-const { readConfig } = require('../config/sources');
+const { readConfig, filterItemsByAllowlist } = require('../config/sources');
 const { ARTIFACT_TYPES, getArtifactTypeNames } = require('../config/artifact-types');
 const { detectConflicts, resolveConflicts, applyResolutions, generateReport } = require('../merge/base-merger');
 const { loadSkillsFromSource } = require('../merge/skill-merger');
@@ -49,10 +49,11 @@ function loadSourcesForType(artifactType, root) {
 
   for (const [name, src] of ordered) {
     if (src.role === 'reference') continue;
+    if (src.installMode && src.installMode !== 'auto') continue;
     if (!(src.artifacts || []).includes(artifactType)) continue;
     const dir = getSourceArtifactDir(name, artifactType, root);
     if (!fs.existsSync(dir)) continue;
-    const items = loader(dir, name);
+    const items = filterItemsByAllowlist(src, artifactType, loader(dir, name));
     if (items.length > 0) {
       sources.push({ name, items });
     }

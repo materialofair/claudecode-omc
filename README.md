@@ -38,6 +38,9 @@ completion with concrete evidence.
 | `omc-manage source list` | Show configured sources |
 | `omc-manage source sync` | Update upstream sources to latest |
 | `omc-manage source add <name> <url>` | Add a new source, including `guidelines` sources |
+| `omc-manage source inspect <name>` | Inspect a source as a bundle/catalog instead of only as flat artifacts |
+| `omc-manage plan install <source> --profile <name>` | Build a profile-driven install plan for a source |
+| `omc-manage plan apply <source> --profile <name>` | Materialize a reviewed plan into source activation state |
 | `omc-manage artifact list [--type <type>]` | List merged artifacts |
 | `omc-manage artifact conflicts [--type <type>]` | Show conflict report |
 | `omc-manage guidelines optimize [source...]` | Build maintainer-only guideline optimization artifacts |
@@ -69,6 +72,52 @@ omc-manage source add karpathy https://github.com/forrestchang/andrej-karpathy-s
 omc-manage source sync karpathy
 omc-manage setup --type guidelines
 ```
+
+Add a distribution-style source such as `everything-claude-code` without
+blindly installing its full multi-harness surface:
+
+```bash
+omc-manage source add ecc https://github.com/affaan-m/everything-claude-code.git \
+  --artifacts skills,agents,hooks,commands \
+  --kind distribution-repo \
+  --install-mode planned \
+  --harnesses claude,codex,cursor,gemini,opencode \
+  --manifests package.json,.claude-plugin/plugin.json,agent.yaml \
+  --profiles claude-runtime,reference-only
+omc-manage source sync ecc
+omc-manage source inspect ecc
+omc-manage plan install ecc --profile claude-runtime
+omc-manage plan apply ecc --profile claude-runtime
+```
+
+`source inspect` reads synced manifests and produces a normalized catalog of
+runtime, reference, tooling, and harness-specific surfaces. `plan install`
+turns that catalog into a profile-driven plan so OMC can absorb
+distribution-style repositories incrementally instead of treating every repo as
+flat artifact directories. `plan apply` is the next gate: it changes the
+source's activation state in OMC config and writes an audit record under source
+metadata, but it still works at source/profile granularity rather than item
+whitelisting.
+
+For item-level curation, pass a selection file to `plan apply`:
+
+```json
+{
+  "skills": ["tdd-workflow", "verification-loop"],
+  "agents": ["planner", "architect"]
+}
+```
+
+Then apply it:
+
+```bash
+omc-manage plan apply ecc \
+  --profile claude-runtime \
+  --selection-file /absolute/path/to/selection.json
+```
+
+When present, the selection file becomes a source-level `allowlist`. OMC will
+only merge those named items from that source for the selected artifact types.
 
 ## Maintainer Guideline Optimization
 
@@ -121,6 +170,20 @@ When the same artifact exists in multiple sources:
 2. **SemVer** — highest version wins
 3. **Local priority** — local always wins
 4. **Source priority** — lower priority number wins
+
+## Source Bundles
+
+OMC now distinguishes between two source kinds:
+
+- `content-repo` — a repo already shaped like OMC artifact directories
+- `distribution-repo` — a repo that publishes multiple harness surfaces,
+  manifests, scripts, and reference material alongside installable Claude
+  runtime artifacts
+
+For distribution repos, OMC syncs declared manifest files into source metadata,
+builds a normalized catalog, and lets you plan by profile before deciding what
+to install. Distribution repos default to `installMode=planned`, so ordinary
+`setup` and `artifact list` flows do not absorb them automatically.
 
 ## License
 

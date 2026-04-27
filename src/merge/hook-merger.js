@@ -14,6 +14,7 @@ function loadHookFilesFromSource(sourceDir, sourceName) {
   for (const entry of entries) {
     if (!entry.isFile()) continue;
     if (entry.name === 'hooks.json') continue;
+    if (entry.name.toLowerCase().endsWith('.md')) continue;
     const fullPath = path.join(sourceDir, entry.name);
     items.push({
       name: entry.name,

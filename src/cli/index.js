@@ -4,6 +4,7 @@ const COMMANDS = {
   setup: () => require('./setup'),
   doctor: () => require('./doctor'),
   source: () => require('./source'),
+  plan: () => require('./plan'),
   skill: () => require('./skill'),
   artifact: () => require('./artifact'),
   guidelines: () => require('./guidelines'),
@@ -19,6 +20,9 @@ function showHelp() {
   console.log('            Install merged artifacts (skills, agents, hooks, commands, etc.)');
   console.log('  doctor    Health checks for all artifact types');
   console.log('  source    list|add|remove|sync|status — manage sources');
+  console.log('            inspect <name> — inspect source bundle/catalog');
+  console.log('  plan      install <source> [--profile <name>] — build install plan');
+  console.log('            apply <source> [--profile <name>] — materialize plan into source activation');
   console.log('  artifact  list|prefer|conflicts [--type <type>] — manage artifacts');
   console.log('  guidelines optimize [source...] [--output-dir <dir>] [--dry-run]');
   console.log('  guidelines apply --result-file <path> [--output-dir <dir>] [--dry-run]');
@@ -79,10 +83,25 @@ async function main(argv) {
     else if (arg.startsWith('--mapping=')) flags.mapping = arg.split('=')[1];
     else if (arg === '--role' && args[i + 1]) flags.role = args[++i];
     else if (arg.startsWith('--role=')) flags.role = arg.split('=')[1];
+    else if (arg === '--kind' && args[i + 1]) flags.kind = args[++i];
+    else if (arg.startsWith('--kind=')) flags.kind = arg.split('=')[1];
+    else if (arg === '--install-mode' && args[i + 1]) flags.installMode = args[++i];
+    else if (arg.startsWith('--install-mode=')) flags.installMode = arg.split('=')[1];
+    else if (arg === '--harnesses' && args[i + 1]) flags.harnesses = args[++i].split(',');
+    else if (arg.startsWith('--harnesses=')) flags.harnesses = arg.split('=')[1].split(',');
+    else if (arg === '--manifests' && args[i + 1]) flags.manifests = args[++i].split(',');
+    else if (arg.startsWith('--manifests=')) flags.manifests = arg.split('=')[1].split(',');
+    else if (arg === '--profiles' && args[i + 1]) flags.profiles = args[++i].split(',');
+    else if (arg.startsWith('--profiles=')) flags.profiles = arg.split('=')[1].split(',');
     else if (arg === '--output-dir' && args[i + 1]) flags.outputDir = args[++i];
     else if (arg.startsWith('--output-dir=')) flags.outputDir = arg.split('=')[1];
     else if (arg === '--result-file' && args[i + 1]) flags.resultFile = args[++i];
     else if (arg.startsWith('--result-file=')) flags.resultFile = arg.split('=')[1];
+    else if (arg === '--selection-file' && args[i + 1]) flags.selectionFile = args[++i];
+    else if (arg.startsWith('--selection-file=')) flags.selectionFile = arg.split('=')[1];
+    else if (arg === '--profile' && args[i + 1]) flags.profile = args[++i];
+    else if (arg.startsWith('--profile=')) flags.profile = arg.split('=')[1];
+    else if (arg === '--json') flags.json = true;
     else if (arg === '--apply') flags.apply = true;
     else if (arg === '--threshold' && args[i + 1]) flags.threshold = args[++i];
     else if (arg.startsWith('--threshold=')) flags.threshold = arg.split('=')[1];
