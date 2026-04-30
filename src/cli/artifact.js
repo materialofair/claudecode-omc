@@ -1,70 +1,10 @@
 /* eslint-disable no-console */
 const fs = require('fs');
 const fsp = require('fs/promises');
-const path = require('path');
-const { getProjectRoot, getSourceArtifactDir, getMergeConfigPath, getReportDir } = require('../config/paths');
-const { readConfig, filterItemsByAllowlist } = require('../config/sources');
+const { getProjectRoot, getMergeConfigPath } = require('../config/paths');
 const { ARTIFACT_TYPES, getArtifactTypeNames } = require('../config/artifact-types');
 const { detectConflicts, resolveConflicts, applyResolutions, generateReport } = require('../merge/base-merger');
-const { loadSkillsFromSource } = require('../merge/skill-merger');
-const { loadAgentsFromSource } = require('../merge/agent-merger');
-const { loadCommandsFromSource } = require('../merge/command-merger');
-const { loadHookFilesFromSource } = require('../merge/hook-merger');
-const { loadFilesFromSource } = require('../merge/file-merger');
-const { loadClaudeMd } = require('../merge/claude-md-merger');
-
-function loadSectionDocumentFromSource(sourceDir) {
-  const content = loadClaudeMd(sourceDir);
-  if (!content) return [];
-  return [{
-    name: 'CLAUDE.md',
-    path: sourceDir,
-    metadata: {
-      description: `${content.length} chars of prompt guidelines`,
-    },
-  }];
-}
-
-function getLoader(artifactType) {
-  switch (artifactType) {
-    case 'skills': return loadSkillsFromSource;
-    case 'agents': return loadAgentsFromSource;
-    case 'commands': return loadCommandsFromSource;
-    case 'hooks': return loadHookFilesFromSource;
-    case 'guidelines': return loadSectionDocumentFromSource;
-    case 'claude-md': return loadSectionDocumentFromSource;
-    case 'hud': return loadFilesFromSource;
-    default: return null;
-  }
-}
-
-function loadSourcesForType(artifactType, root) {
-  const config = readConfig();
-  const sources = [];
-  const ordered = Object.entries(config.sources)
-    .sort(([, a], [, b]) => a.priority - b.priority);
-
-  const loader = getLoader(artifactType);
-  if (!loader) return sources;
-
-  for (const [name, src] of ordered) {
-    if (src.role === 'reference') continue;
-    if (src.installMode && src.installMode !== 'auto') continue;
-    if (!(src.artifacts || []).includes(artifactType)) continue;
-    const dir = getSourceArtifactDir(name, artifactType, root);
-    if (!fs.existsSync(dir)) continue;
-    const items = filterItemsByAllowlist(src, artifactType, loader(dir, name));
-    if (items.length > 0) {
-      sources.push({ name, items });
-    }
-  }
-
-  if (sources.length === 0 && artifactType === 'claude-md') {
-    return loadSourcesForType('guidelines', root);
-  }
-
-  return sources;
-}
+const { loadSourcesForType } = require('../merge/artifact-source-loader');
 
 async function artifact(args, flags = {}) {
   const cmd = args[0] || 'list';

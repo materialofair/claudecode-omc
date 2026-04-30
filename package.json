@@ -1,6 +1,6 @@
 {
   "name": "claudecode-omc",
-  "version": "5.6.1",
+  "version": "5.6.2",
   "description": "Claude Code harness — best-practice skills, agents, hooks, and configs from multiple sources",
   "bin": {
     "omc-manage": "bin/omc-manage.js"
@@ -15,6 +15,7 @@
     "README.md"
   ],
   "scripts": {
+    "test": "node --test",
     "setup": "node bin/omc-manage.js setup",
     "doctor": "node bin/omc-manage.js doctor",
     "guidelines:optimize": "node bin/omc-manage.js guidelines optimize",

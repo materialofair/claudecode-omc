@@ -74,8 +74,8 @@ async function syncRemoteSource(sourceName, sourceConfig, root) {
       const srcPath = path.join(tmpDir, srcSubdir);
       const destPath = getSyncTargetDir(sourceName, artifactType, root);
 
+      await fsp.rm(destPath, { recursive: true, force: true });
       if (fs.existsSync(srcPath)) {
-        await fsp.rm(destPath, { recursive: true, force: true });
         if (fs.statSync(srcPath).isDirectory()) {
           await copyDirRecursive(srcPath, destPath);
         } else {

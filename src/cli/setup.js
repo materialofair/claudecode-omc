@@ -3,23 +3,17 @@ const fs = require('fs');
 const fsp = require('fs/promises');
 const path = require('path');
 const os = require('os');
-const { getProjectRoot, getSourceArtifactDir, getInstallTarget, getMergeConfigPath, getReportDir } = require('../config/paths');
+const { getProjectRoot, getScopedInstallTarget, getMergeConfigPath } = require('../config/paths');
 const { readConfig, filterItemsByAllowlist } = require('../config/sources');
 const { getArtifactTypeNames, ARTIFACT_TYPES } = require('../config/artifact-types');
-const { detectConflicts, resolveConflicts, applyResolutions, generateReport } = require('../merge/base-merger');
-const { loadSkillsFromSource } = require('../merge/skill-merger');
-const { loadAgentsFromSource } = require('../merge/agent-merger');
-const { loadCommandsFromSource } = require('../merge/command-merger');
-const { loadHookFilesFromSource, loadHooksConfig, mergeHooksConfigs, hasHookLib } = require('../merge/hook-merger');
+const { detectConflicts, resolveConflicts, applyResolutions } = require('../merge/base-merger');
+const { loadHooksConfig, mergeHooksConfigs, hasHookLib } = require('../merge/hook-merger');
 const { loadClaudeMd, mergeIntoExisting, assembleSections } = require('../merge/claude-md-merger');
 const { loadSettingsFragment, mergeSettingsFragments } = require('../merge/settings-merger');
-const { loadFilesFromSource } = require('../merge/file-merger');
-const { evaluateSkillQuality } = require('../utils/quality');
-const { copyDirRecursive } = require('./source');
+const { collectSourceDirsForType, getArtifactLoader } = require('../merge/artifact-source-loader');
 
 const OMC_VERSION_PATH = path.join(os.homedir(), '.claude', '.omc-version.json');
 const OMC_CONFIG_PATH = path.join(os.homedir(), '.claude', '.omc-config.json');
-const OMC_INSTALL_MANIFEST_PATH = path.join(os.homedir(), '.claude', '.omc-install-manifest.json');
 const LEGACY_HOOK_PATHS = [
   'hooks.json',
   'hooks-cursor.json',
@@ -125,6 +119,18 @@ function inferLegacyManagedPaths(artifactType, installTarget, desiredPaths, extr
   }
 }
 
+function normalizePreviousManagedPaths(artifactType, previousPaths) {
+  if (!Array.isArray(previousPaths)) return previousPaths;
+
+  if (artifactType !== 'agents' && artifactType !== 'commands') {
+    return previousPaths;
+  }
+
+  return previousPaths.map((relativePath) => (
+    path.extname(relativePath) ? relativePath : `${relativePath}.md`
+  ));
+}
+
 async function pruneManagedPaths(installTarget, previousPaths, desiredPaths, flags) {
   if (!fs.existsSync(installTarget) || !fs.statSync(installTarget).isDirectory()) {
     return 0;
@@ -192,43 +198,19 @@ async function copyDirectory(src, dest, options = {}) {
   return count;
 }
 
-function getLoader(artifactType) {
-  switch (artifactType) {
-    case 'skills': return loadSkillsFromSource;
-    case 'agents': return loadAgentsFromSource;
-    case 'commands': return loadCommandsFromSource;
-    case 'hooks': return loadHookFilesFromSource;
-    case 'hud': return loadFilesFromSource;
-    default: return null;
-  }
-}
-
-function collectSourcesForType(artifactType, orderedSources, root) {
-  const sourcesForType = [];
-
-  for (const [name, src] of orderedSources) {
-    // Skip reference-only sources (e.g. anthropic-skills) — they provide
-    // evaluation standards, not installable artifacts.
-    if (src.role === 'reference') continue;
-    if (src.installMode && src.installMode !== 'auto') continue;
-    const declaredArtifacts = src.artifacts || [];
-    if (!declaredArtifacts.includes(artifactType)) continue;
-
-    const dir = getSourceArtifactDir(name, artifactType, root);
-    if (fs.existsSync(dir)) {
-      sourcesForType.push({ name, dir, priority: src.priority, config: src });
-    }
+function getManagedPathForItem(artifactType, item) {
+  if (artifactType === 'skills' || item.isDirectory) {
+    return item.name;
   }
 
-  if (sourcesForType.length === 0 && artifactType === 'claude-md') {
-    return collectSourcesForType('guidelines', orderedSources, root);
-  }
-
-  return sourcesForType;
+  // Loaders keep logical names extensionless for conflict checks; manifests
+  // must track the real path written to disk.
+  const sourceExt = path.extname(item.path);
+  return sourceExt && !item.name.endsWith(sourceExt) ? `${item.name}${sourceExt}` : item.name;
 }
 
 async function installNameBasedArtifacts(artifactType, sources, mergeConfig, installTarget, flags) {
-  const loader = getLoader(artifactType);
+  const loader = getArtifactLoader(artifactType);
   if (!loader) return { count: 0, total: 0 };
 
   const loaded = [];
@@ -257,6 +239,8 @@ async function installNameBasedArtifacts(artifactType, sources, mergeConfig, ins
     }
   }
 
+  const managedPaths = merged.map(item => getManagedPathForItem(artifactType, item));
+
   if (flags.dryRun) {
     for (const item of merged.sort((a, b) => a.name.localeCompare(b.name))) {
       console.log(`    ${item.name} (${item.sourceName})`);
@@ -265,7 +249,7 @@ async function installNameBasedArtifacts(artifactType, sources, mergeConfig, ins
       count: 0,
       total: merged.length,
       conflicts: conflicts.length,
-      managedPaths: merged.map(item => item.name),
+      managedPaths,
       excludedNames: excludeList,
     };
   }
@@ -275,14 +259,10 @@ async function installNameBasedArtifacts(artifactType, sources, mergeConfig, ins
 
   for (const item of merged) {
     if (artifactType === 'skills' || item.isDirectory) {
-      const dest = path.join(installTarget, item.name);
+      const dest = path.join(installTarget, getManagedPathForItem(artifactType, item));
       fileCount += await copyDirectory(item.path, dest, flags);
     } else {
-      // Single file copy. Loaders strip `.md` from item.name for matching/allowlist purposes;
-      // re-attach the source extension on disk so Claude Code's `*.md` loader picks them up.
-      const sourceExt = path.extname(item.path);
-      const destName = sourceExt && !item.name.endsWith(sourceExt) ? `${item.name}${sourceExt}` : item.name;
-      const dest = path.join(installTarget, destName);
+      const dest = path.join(installTarget, getManagedPathForItem(artifactType, item));
       await fsp.mkdir(path.dirname(dest), { recursive: true });
       await fsp.copyFile(item.path, dest);
       fileCount += 1;
@@ -293,7 +273,7 @@ async function installNameBasedArtifacts(artifactType, sources, mergeConfig, ins
     count: fileCount,
     total: merged.length,
     conflicts: conflicts.length,
-    managedPaths: merged.map(item => item.name),
+    managedPaths,
     excludedNames: excludeList,
   };
 }
@@ -440,10 +420,6 @@ async function setup(args, flags = {}) {
     try { mergeConfig = JSON.parse(fs.readFileSync(mergeConfigPath, 'utf8')); } catch {}
   }
 
-  // Get ordered sources (by priority)
-  const orderedSources = Object.entries(config.sources)
-    .sort(([, a], [, b]) => a.priority - b.priority);
-
   const allTypes = getArtifactTypeNames().filter(type => type !== 'claude-md');
   const typesToInstall = typeFilter || allTypes;
   const previousManifest = await readJsonFile(manifestPath, { artifacts: {} });
@@ -463,11 +439,9 @@ async function setup(args, flags = {}) {
       continue;
     }
 
-    const sourcesForType = collectSourcesForType(artifactType, orderedSources, root);
+    const sourcesForType = collectSourceDirsForType(artifactType, root, config);
 
-    const installTarget = (artifactType === 'skills' && scope === 'project')
-      ? path.join(process.cwd(), '.claude', 'skills')
-      : typeConfig.installTarget;
+    const installTarget = getScopedInstallTarget(artifactType, scope, process.cwd());
 
     console.log(`[${step}/${totalSteps}] ${typeConfig.label} (${sourcesForType.length} sources)`);
 
@@ -501,7 +475,10 @@ async function setup(args, flags = {}) {
     }
 
     if (typeConfig.format !== 'single-file' && typeConfig.format !== 'json') {
-      const previousPaths = previousManifest.artifacts?.[artifactType]?.paths;
+      const previousPaths = normalizePreviousManagedPaths(
+        artifactType,
+        previousManifest.artifacts?.[artifactType]?.paths,
+      );
       const managedPaths = uniq(result.managedPaths || []);
       const bootstrapPaths = previousPaths || inferLegacyManagedPaths(
         artifactType,

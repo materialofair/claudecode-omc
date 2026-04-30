@@ -213,6 +213,23 @@ function getInstallTarget(artifactType) {
   return type.installTarget;
 }
 
+function getScopedInstallTarget(artifactType, scope = 'user', cwd = process.cwd()) {
+  if (scope !== 'project') {
+    return getInstallTarget(artifactType);
+  }
+
+  if (artifactType === 'guidelines' || artifactType === 'claude-md') {
+    return path.join(cwd, '.claude', 'CLAUDE.md');
+  }
+  if (artifactType === 'settings') {
+    return path.join(cwd, '.claude', 'settings.json');
+  }
+
+  const type = ARTIFACT_TYPES[artifactType];
+  if (!type) throw new Error(`Unknown artifact type: ${artifactType}`);
+  return path.join(cwd, '.claude', type.sourceSubdir);
+}
+
 // Backward-compatible aliases
 function getLocalSkillsDir(root) {
   return getSourceArtifactDir('local', 'skills', root);
@@ -257,6 +274,7 @@ module.exports = {
   getSyncTargetDir,
   getSyncTempDir,
   getInstallTarget,
+  getScopedInstallTarget,
   USER_DATA_DIR,
   // Backward-compatible
   getLocalSkillsDir,
