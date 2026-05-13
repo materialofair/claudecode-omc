@@ -31,6 +31,7 @@ function showHelp() {
   console.log('            evaluate [name] — quality score (Anthropic-aligned)');
   console.log('            compare [--threshold N] — cross-source overlap analysis');
   console.log('            recommend [--apply] — preference recommendations');
+  console.log('            index [--scope user|project] — generate _index.md catalog');
   console.log('  help      Show this help');
   console.log('');
   console.log('Artifact types: skills, agents, hooks, commands, guidelines, claude-md, settings, hud');

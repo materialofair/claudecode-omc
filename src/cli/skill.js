@@ -271,6 +271,10 @@ async function skill(args, flags = {}) {
   if (cmd === 'recommend') {
     return recommend(args, flags);
   }
+  if (cmd === 'index') {
+    const { indexCommand } = require('./skill-index');
+    return indexCommand(args.slice(1), flags);
+  }
 
   // Fall through to artifact subcommands (list, prefer, conflicts)
   flags.type = 'skills';

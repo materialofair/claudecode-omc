@@ -505,6 +505,15 @@ async function setup(args, flags = {}) {
     if (result.conflicts > 0) {
       console.log(`    resolved ${result.conflicts} conflicts`);
     }
+
+    if (artifactType === 'skills' && !flags.dryRun) {
+      try {
+        const { buildAndWriteIndex } = require('./skill-index');
+        await buildAndWriteIndex(installTarget, { quiet: false });
+      } catch (err) {
+        console.log(`    warning: skill index generation failed: ${err.message}`);
+      }
+    }
   }
 
   if (!flags.dryRun && scope === 'user') {
