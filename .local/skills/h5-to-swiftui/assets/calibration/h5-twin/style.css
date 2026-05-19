@@ -1,0 +1,133 @@
+/* Calibration Twin — style.css
+   Design tokens as CSS custom properties.
+   Every value here MUST match tokens.json and CalibrationScreen.swift exactly.
+   Do NOT add, remove, or change values without updating all three files.
+*/
+
+/* ── Design Tokens ──────────────────────────────────────────────── */
+:root {
+  /* colors */
+  --color-background:    #F2F2F7;
+  --color-card:          #4A90D9;
+  --color-circle:        #E8744F;
+  --color-text-heading:  #1C1C1E;
+  --color-text-body:     #636366;
+
+  /* card stripes — structured multi-color region (NOT a flat block) so the
+     measured SSIM floor is meaningful (flat content makes SSIM blind to a
+     uniform mean shift). */
+  --color-stripe-a:      #4A90D9;   /* blue   */
+  --color-stripe-b:      #7E57C2;   /* purple */
+  --color-stripe-c:      #26A69A;   /* teal   */
+  --color-stripe-d:      #F4B400;   /* amber  */
+
+  /* spacing */
+  --space-safe-top:      59px;   /* iPhone 15 Pro top safe-area inset */
+  --space-page-h:        20px;   /* horizontal page padding */
+  --space-section-gap:   24px;   /* gap between text block and shape block */
+  --space-card-padding:  20px;   /* inner padding of the blue card */
+  --space-card-gap:      16px;   /* gap between card and circle row */
+
+  /* radii */
+  --radius-card:         16px;
+
+  /* typography */
+  --font-family:         -apple-system, system-ui, BlinkMacSystemFont, sans-serif;
+  --font-size-heading:   22px;
+  --font-weight-heading: 600;    /* semibold */
+  --line-height-heading: 1.27;   /* ~28px → matches SF heading leading */
+  --font-size-body:      15px;
+  --font-weight-body:    400;    /* regular */
+  --line-height-body:    1.47;   /* ~22px → matches SF body leading */
+
+  /* shape */
+  --size-circle:         64px;
+}
+
+/* ── Reset / Base ───────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  width: 393px;          /* iPhone 15 Pro logical width */
+  min-height: 852px;     /* iPhone 15 Pro logical height */
+  background-color: var(--color-background);
+  font-family: var(--font-family);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Screen container ───────────────────────────────────────────── */
+.screen {
+  width: 393px;
+  min-height: 852px;
+  background-color: var(--color-background);
+  padding-top: var(--space-safe-top);
+  padding-left: var(--space-page-h);
+  padding-right: var(--space-page-h);
+}
+
+/* ── Text block ─────────────────────────────────────────────────── */
+.text-block {
+  /* sits immediately below safe-area inset, no extra top margin */
+}
+
+.text-block__heading {
+  font-family: var(--font-family);
+  font-size: var(--font-size-heading);
+  font-weight: var(--font-weight-heading);
+  line-height: var(--line-height-heading);
+  color: var(--color-text-heading);
+}
+
+.text-block__body {
+  margin-top: 8px;
+  font-family: var(--font-family);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-body);
+  line-height: var(--line-height-body);
+  color: var(--color-text-body);
+}
+
+/* ── Shape block ────────────────────────────────────────────────── */
+.shape-block {
+  margin-top: var(--space-section-gap);
+}
+
+.shape-block__card {
+  background-color: var(--color-card);
+  border-radius: var(--radius-card);
+  /* fixed height instead of padding-only so the stripes have a stable box;
+     2 × card padding (40px) keeps the same overall card height as before. */
+  height: calc(var(--space-card-padding) * 2);
+  overflow: hidden;
+  display: flex;
+  flex-direction: row;
+}
+
+/* 4 equal-width vertical stripes — a structured, multi-color region. */
+.shape-block__stripe {
+  flex: 1 1 25%;
+  height: 100%;
+}
+.shape-block__stripe--a { background-color: var(--color-stripe-a); }
+.shape-block__stripe--b { background-color: var(--color-stripe-b); }
+.shape-block__stripe--c { background-color: var(--color-stripe-c); }
+.shape-block__stripe--d { background-color: var(--color-stripe-d); }
+
+.shape-block__circle-row {
+  margin-top: var(--space-card-gap);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.shape-block__circle {
+  width: var(--size-circle);
+  height: var(--size-circle);
+  border-radius: 50%;
+  background-color: var(--color-circle);
+  flex-shrink: 0;
+}

@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TaskFlow</title>
+  <link rel="stylesheet" href="styles/tokens.css" />
+  <link rel="stylesheet" href="styles/app.css" />
+</head>
+<body>
+  <!-- Root shell — screens are injected here by router.js -->
+  <div id="app">
+    <nav id="nav-bar">
+      <a href="#/home" class="nav-link" data-route="home">Home</a>
+      <a href="#/list" class="nav-link" data-route="list">Tasks</a>
+    </nav>
+    <main id="screen-root"></main>
+  </div>
+
+  <script src="data/tasks.js"></script>
+  <script src="screens/home.js"></script>
+  <script src="screens/list.js"></script>
+  <script src="screens/detail.js"></script>
+  <script src="router.js"></script>
+</body>
+</html>

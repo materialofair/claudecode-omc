@@ -1,0 +1,96 @@
+{
+  "id": "001",
+  "title": "SwiftUI Custom Layouts: A Complete Guide",
+  "subtitle": "How the Layout protocol changes everything you thought you knew about view composition",
+  "tag": "SwiftUI",
+  "author": {
+    "name": "Elena Vasquez",
+    "role": "Senior iOS Engineer",
+    "bio": "Elena writes about Swift, SwiftUI, and the craft of building beautiful iOS apps. Previously at Apple UIKit team."
+  },
+  "publishedAt": "2026-05-12T08:00:00Z",
+  "readingTime": 9,
+  "body": [
+    {
+      "type": "paragraph",
+      "text": "Before iOS 16, building a tag cloud in SwiftUI required creative workarounds: measuring text with a hidden Text view, storing widths in a preference key, and recomputing rows in a second pass. The result was fragile, verbose, and broke Dynamic Type. The Layout protocol changes all of that."
+    },
+    {
+      "type": "heading",
+      "text": "What the Layout Protocol Actually Does"
+    },
+    {
+      "type": "paragraph",
+      "text": "The Layout protocol exposes two methods: sizeThatFits and placeSubviews. Together they replicate the two-pass layout model that UIKit's layoutSubviews always had, but in a pure-Swift, declarative API that composes naturally with other SwiftUI views."
+    },
+    {
+      "type": "paragraph",
+      "text": "The key insight is that a Layout conformer does not manage a view hierarchy — it manages geometry. Your subviews remain ordinary SwiftUI views with all their modifiers and state intact. The Layout only decides where they go and how much space they claim."
+    },
+    {
+      "type": "pullquote",
+      "text": "A Layout conformer does not manage a view hierarchy. It manages geometry. The distinction matters more than it seems.",
+      "attribution": "Apple WWDC22-10056, Compose custom layouts with SwiftUI"
+    },
+    {
+      "type": "heading",
+      "text": "The FlowLayout Pattern"
+    },
+    {
+      "type": "paragraph",
+      "text": "The most common use case is a flow layout — the direct equivalent of CSS flex-wrap: wrap. Items line up horizontally until they would overflow, then wrap to the next row. Each row height is determined by the tallest item in that row."
+    },
+    {
+      "type": "subheading",
+      "text": "sizeThatFits: Measure First"
+    },
+    {
+      "type": "paragraph",
+      "text": "The sizeThatFits pass walks through subviews, asking each one for its ideal size via sizeThatFits(.unspecified). It tracks the current x offset and wraps to a new row whenever adding the next item would exceed the proposed width. The total height is the sum of all row heights plus spacing between rows."
+    },
+    {
+      "type": "code",
+      "caption": "FlowLayout.swift — sizeThatFits",
+      "text": "func sizeThatFits(\n    proposal: ProposedViewSize,\n    subviews: Subviews,\n    cache: inout ()\n) -> CGSize {\n    let maxWidth = proposal.width ?? .infinity\n    var x: CGFloat = 0\n    var y: CGFloat = 0\n    var rowHeight: CGFloat = 0\n\n    for view in subviews {\n        let size = view.sizeThatFits(.unspecified)\n        if x + size.width > maxWidth, x > 0 {\n            y += rowHeight + spacing\n            x = 0\n            rowHeight = 0\n        }\n        x += size.width + spacing\n        rowHeight = max(rowHeight, size.height)\n    }\n    return CGSize(width: maxWidth, height: y + rowHeight)\n}"
+    },
+    {
+      "type": "subheading",
+      "text": "placeSubviews: Commit the Geometry"
+    },
+    {
+      "type": "paragraph",
+      "text": "The placeSubviews pass repeats the same walk — you cannot cache positions between the two passes in the void-cache form — and calls place(at:proposal:) on each subview. The coordinates are in the container's local coordinate space, with origin at the top-left of the bounds rect."
+    },
+    {
+      "type": "caption",
+      "text": "Note: add a struct Cache type to avoid measuring subviews twice when measurement is expensive."
+    },
+    {
+      "type": "divider"
+    },
+    {
+      "type": "heading",
+      "text": "When to Reach for Custom Layout"
+    },
+    {
+      "type": "paragraph",
+      "text": "Not every complex layout needs a custom Layout conformer. LazyVGrid with GridItem(.adaptive(minimum:)) handles the vast majority of responsive card grids. HStack and VStack with Spacer handle nearly all flex-direction use cases. Reserve custom Layout for four specific patterns: flex-wrap, non-uniform flex-grow ratios, non-uniform fr ratios, and radial placement."
+    },
+    {
+      "type": "paragraph",
+      "text": "The cost of a custom Layout is measured in code, not performance. The layout engine is highly optimized — a properly implemented FlowLayout is not measurably slower than LazyVGrid. The cost is the additional code surface to maintain and test. Write it once, test it, package it, and reuse it."
+    },
+    {
+      "type": "heading",
+      "text": "Dynamic Type and the Layout Protocol"
+    },
+    {
+      "type": "paragraph",
+      "text": "One of the best properties of a Layout-based flow is that it handles Dynamic Type correctly with zero extra work. Because each subview measures itself at its natural size — including any text scaling from the environment — the flow layout automatically reflows items when the user changes their preferred text size. Compare this to a hardcoded UICollectionViewFlowLayout with itemSize: there is no equivalent automatic reflow."
+    },
+    {
+      "type": "paragraph",
+      "text": "This composability — layout logic fully decoupled from content — is the deepest benefit of the Layout protocol. Build the geometry algorithm once. Apply it to any content. The content takes care of itself."
+    }
+  ]
+}

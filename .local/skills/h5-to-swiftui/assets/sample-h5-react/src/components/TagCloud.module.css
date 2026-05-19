@@ -1,0 +1,50 @@
+/* CUSTOM-LAYOUT: flex-wrap:wrap
+ *
+ * flex-wrap: wrap causes tags with non-uniform widths to reflow onto multiple
+ * rows. The break points are data-driven (label length) and width-driven
+ * (viewport). HStack in SwiftUI never wraps — this MUST use a custom Layout
+ * (FlowLayout) implementing the Layout protocol (iOS 16+).
+ *
+ * Trigger quote from css-to-swiftui-map.md:
+ *   "flex-wrap: wrap → Custom Layout protocol (iOS 16+) — FlowLayout
+ *    No LazyHGrid/LazyVGrid equivalent for true wrapping"
+ */
+.cloud {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap; /* CUSTOM-LAYOUT: flex-wrap:wrap */
+  gap: var(--space-2) var(--space-2);
+  padding: var(--space-4) 0;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+  background-color: var(--color-bg-tag);
+  color: var(--color-text-accent);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+  border: 1px solid transparent;
+  transition: background-color var(--duration-fast) var(--easing-default),
+              border-color var(--duration-fast) var(--easing-default);
+  cursor: pointer;
+}
+
+.tag:hover {
+  background-color: var(--color-bg-secondary);
+  border-color: var(--color-border);
+}
+
+.tagSelected {
+  background-color: var(--color-accent);
+  color: var(--color-text-on-accent);
+  border-color: var(--color-accent);
+}
+
+.tagSelected:hover {
+  background-color: var(--color-accent-hover);
+  border-color: var(--color-accent-hover);
+}

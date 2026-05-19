@@ -1,0 +1,89 @@
+{
+  "articles": [
+    {
+      "id": "001",
+      "title": "SwiftUI Custom Layouts: A Complete Guide",
+      "subtitle": "How the Layout protocol changes everything you thought you knew about view composition",
+      "summary": "Apple's Layout protocol, introduced in iOS 16, fills the last major gap between CSS Flexbox and SwiftUI. Here is how to use it without rewriting your entire view hierarchy.",
+      "tag": "SwiftUI",
+      "author": {
+        "name": "Elena Vasquez",
+        "role": "Senior iOS Engineer",
+        "bio": "Elena writes about Swift, SwiftUI, and the craft of building beautiful iOS apps. Previously at Apple UIKit team."
+      },
+      "publishedAt": "2026-05-12T08:00:00Z",
+      "readingTime": 9,
+      "imageAlt": "Diagram showing SwiftUI layout protocol flow"
+    },
+    {
+      "id": "002",
+      "title": "CSS-to-SwiftUI: The Mapping Table You Actually Need",
+      "subtitle": "Every flex and grid property mapped — with the caveats that break your layout",
+      "summary": "Mechanical transpilation from CSS to SwiftUI fails at six structural boundaries. This guide documents every mapping that matters for pixel-level parity and the exact divergences you need to handle manually.",
+      "tag": "Design",
+      "author": {
+        "name": "Marcus Liu",
+        "role": "Design Engineer"
+      },
+      "publishedAt": "2026-05-08T10:30:00Z",
+      "readingTime": 12,
+      "imageAlt": "Side-by-side CSS and SwiftUI code comparison"
+    },
+    {
+      "id": "003",
+      "title": "WebGL on iOS: When to Keep It and When to Rewrite",
+      "subtitle": "A practical triage guide for GPU-heavy web content in a native app migration",
+      "summary": "Not every canvas element should become a Metal view. Understanding the performance ceiling and fidelity trade-offs helps you make the right call on each surface — and avoid shipping a half-native app.",
+      "tag": "Engineering",
+      "author": {
+        "name": "Priya Nair",
+        "role": "Platform Engineer"
+      },
+      "publishedAt": "2026-05-01T09:15:00Z",
+      "readingTime": 7,
+      "imageAlt": "GPU pipeline diagram"
+    },
+    {
+      "id": "004",
+      "title": "Typography at the iOS Scale: CoreText vs WebKit",
+      "subtitle": "Why identical font declarations produce different layouts — and how to fix them",
+      "summary": "line-height: 1.5 means something different in every rendering engine. This deep-dive explains WebKit's half-leading, CoreText's font metrics, and the exact formula to convert between them without visual drift.",
+      "tag": "Design",
+      "author": {
+        "name": "Sofia Andersson",
+        "role": "Type Systems Lead"
+      },
+      "publishedAt": "2026-04-28T07:45:00Z",
+      "readingTime": 11,
+      "imageAlt": "Typography baseline grid comparison"
+    },
+    {
+      "id": "005",
+      "title": "Accessibility Tokens: Building a Design System for Both Web and iOS",
+      "subtitle": "One token source of truth, two rendering targets, zero compromises",
+      "summary": "Design tokens are the bridge between your CSS custom properties and SwiftUI's Color and Font extensions. When you get the extraction pipeline right, dark mode and Dynamic Type come for free on both platforms.",
+      "tag": "Accessibility",
+      "author": {
+        "name": "Elena Vasquez",
+        "role": "Senior iOS Engineer"
+      },
+      "publishedAt": "2026-04-20T11:00:00Z",
+      "readingTime": 8,
+      "imageAlt": "Design token pipeline diagram"
+    },
+    {
+      "id": "006",
+      "title": "Machine Learning at the Edge: Core ML vs WebAssembly",
+      "subtitle": "How on-device inference differs between iOS and modern browsers",
+      "summary": "WebAssembly SIMD can achieve near-native throughput for small models, but Core ML's neural engine offers a 10x power efficiency advantage. Here is when each approach wins.",
+      "tag": "Machine Learning",
+      "author": {
+        "name": "James Park",
+        "role": "ML Platform Lead"
+      },
+      "publishedAt": "2026-04-15T14:00:00Z",
+      "readingTime": 14,
+      "imageAlt": "Core ML vs WASM inference benchmark chart"
+    }
+  ]
+}

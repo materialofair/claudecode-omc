@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<!--
+  Calibration Twin — h5-twin/index.html
+  Known-correct H5 side of the Stage 2.5 render-equivalence calibration pair.
+  Open directly as a static file — zero JS framework, zero build step.
+
+  IMPORTANT: every color, size, and spacing value here is driven by the CSS
+  custom properties in style.css, which must remain in sync with
+  tokens.json and swiftui-twin/Sources/CalibrationScreen/CalibrationScreen.swift.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <!--
+    Viewport: fixed 393px logical width, no user scaling.
+    Matches iPhone 15 Pro logical resolution used in the SwiftUI twin.
+  -->
+  <meta name="viewport" content="width=393, initial-scale=1.0, user-scalable=no" />
+  <title>Calibration Twin</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="screen">
+
+    <!-- TEXT BLOCK: heading + body paragraph -->
+    <section class="text-block" aria-label="text-block">
+      <h1 class="text-block__heading">Calibration Screen</h1>
+      <p  class="text-block__body">
+        This screen is the known-correct H5 twin used to measure the
+        cross-renderer fidelity floor. It is not a conversion target.
+      </p>
+    </section>
+
+    <!-- SHAPE BLOCK: structured (multi-color stripes) card + circle.
+         Deliberately NOT a flat solid block — SSIM is insensitive to a
+         uniform mean shift on flat content, so the calibration region must
+         carry structure for the floor to be meaningful. -->
+    <section class="shape-block" aria-label="shape-block">
+      <div class="shape-block__card" aria-label="card">
+        <div class="shape-block__stripe shape-block__stripe--a"></div>
+        <div class="shape-block__stripe shape-block__stripe--b"></div>
+        <div class="shape-block__stripe shape-block__stripe--c"></div>
+        <div class="shape-block__stripe shape-block__stripe--d"></div>
+      </div>
+      <div class="shape-block__circle-row">
+        <div class="shape-block__circle" aria-label="circle"></div>
+      </div>
+    </section>
+
+  </div>
+</body>
+</html>

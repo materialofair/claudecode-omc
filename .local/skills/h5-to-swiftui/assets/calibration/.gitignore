@@ -1,0 +1,4 @@
+# Swift Package Manager build artifacts — never commit
+.build/
+*.xcodeproj/xcuserdata/
+.swiftpm/
