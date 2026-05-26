@@ -17,7 +17,7 @@ Defaults (only the bundled sources, no extras):
 
 | Artifact | Count | Sources |
 |----------|-------|---------|
-| Skills | ~62 | oh-my-claudecode + superpowers |
+| Skills | ~70 | oh-my-claudecode + superpowers + iOS/SwiftUI pack |
 | Agents | ~19 | oh-my-claudecode + superpowers |
 | Hooks | ~8 | oh-my-claudecode (standalone) |
 | Commands | ~3 | superpowers |
@@ -25,7 +25,7 @@ Defaults (only the bundled sources, no extras):
 
 All artifacts are installed to `~/.claude/` where Claude Code discovers them automatically.
 Adding a curated subset of [everything-claude-code](https://github.com/affaan-m/everything-claude-code)
-on top can take totals to ~94 skills / ~35 agents / ~26 commands — see
+on top can take totals to ~102 skills / ~35 agents / ~26 commands — see
 [Distribution-Repo Sources](#distribution-repo-sources) below.
 
 The bundled guidelines install into `~/.claude/CLAUDE.md` and add lightweight
@@ -33,6 +33,23 @@ coding discipline rules
 adapted from [andrej-karpathy-skills](https://github.com/forrestchang/andrej-karpathy-skills):
 think before coding, prefer simple solutions, make surgical changes, and verify
 completion with concrete evidence.
+
+### 🆕 iOS/SwiftUI Skills Pack (v5.6.8)
+
+The latest release includes 8 specialized iOS/SwiftUI skills from MIT-licensed sources:
+
+| Skill | Author | Purpose |
+|-------|--------|---------|
+| `swiftui-expert-skill` | [AvdLee](https://github.com/AvdLee) | Comprehensive SwiftUI patterns, accessibility, animations |
+| `swiftui-pro` | [twostraws](https://github.com/twostraws) | Professional SwiftUI development best practices |
+| `ios-debugger-agent` | [Dimillian](https://github.com/Dimillian) | Advanced iOS debugging and troubleshooting |
+| `swift-concurrency-expert` | [Dimillian](https://github.com/Dimillian) | Swift concurrency, async/await patterns |
+| `swiftui-liquid-glass` | [Dimillian](https://github.com/Dimillian) | Modern liquid glass UI effects |
+| `swiftui-performance-audit` | [Dimillian](https://github.com/Dimillian) | Performance profiling and optimization |
+| `swiftui-ui-patterns` | [Dimillian](https://github.com/Dimillian) | Common UI patterns and components |
+| `swiftui-view-refactor` | [Dimillian](https://github.com/Dimillian) | View architecture and refactoring |
+
+All skills include comprehensive reference materials and follow ECC standards for seamless integration.
 
 ## Commands
 
