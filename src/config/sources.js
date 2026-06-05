@@ -86,9 +86,9 @@ function getDefaultConfig() {
         installMode: 'auto',
         harnesses: ['claude'],
         manifests: ['plugin.json', 'marketplace.json', '.claude-plugin/marketplace.json'],
-        // Curated subset ships via .omc-curation/ecc-selection.json so a fresh
-        // install gets the vetted slice, not all 251 skills / 63 agents.
-        allowlist: loadCurationAllowlist('ecc'),
+        // Allowlist is applied generically in normalizeSourceConfig from
+        // .omc-curation/ecc-selection.json (a fresh install gets the vetted
+        // slice, not all 251 skills / 63 agents) — same path as every source.
         appliedProfile: 'claude-runtime',
         profiles: DEFAULT_INSTALL_PROFILES,
       },
@@ -151,7 +151,10 @@ function normalizeSourceConfig(name, source) {
     ? DEFAULT_DISTRIBUTION_MANIFESTS
     : []));
   source.profiles = dedupeStrings(source.profiles || DEFAULT_INSTALL_PROFILES);
-  source.allowlist = normalizeAllowlist(source.allowlist);
+  // Curation is source-agnostic: an explicit allowlist (e.g. from `plan apply`)
+  // always wins; otherwise any source is governed by its in-repo
+  // .omc-curation/<name>-selection.json. No file → no allowlist → install all.
+  source.allowlist = normalizeAllowlist(source.allowlist) || normalizeAllowlist(loadCurationAllowlist(name));
 
   if (source.role === 'reference' && !source.profiles.includes('reference-only')) {
     source.profiles.push('reference-only');

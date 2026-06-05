@@ -81,6 +81,21 @@ All skills include comprehensive reference materials and follow ECC standards fo
 | ecc | 4 | yes | [everything-claude-code](https://github.com/affaan-m/everything-claude-code) distribution; ships a curated subset via `.omc-curation/ecc-selection.json` (not all 251 skills) |
 | your own | 5+ | opt-in | Distribution-style repos added via `source add --kind distribution-repo` |
 
+### Per-source curation
+
+Any source — not just ECC — can be trimmed to a vetted subset by dropping an
+allowlist file at `.omc-curation/<source>-selection.json`:
+
+```json
+{ "skills": ["skill-a", "skill-b"], "agents": ["agent-x"], "commands": [] }
+```
+
+The same file drives both the default config (fresh installs) and
+`omc-manage plan apply <source>` (which auto-discovers it). No file means no
+allowlist — the source installs everything. An explicit allowlist applied via
+`plan apply` always wins over the file. `ecc-selection.json` is just the first
+instance of this generic mechanism.
+
 Local artifacts always win conflicts. Sources added via `source add` are
 appended at the next free priority. Add your own skills:
 
