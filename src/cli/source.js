@@ -125,6 +125,10 @@ function parseMappingFlag(mappingFlag) {
   return mapping;
 }
 
+// EXPERIMENTAL (not load-bearing): pinned/frozen fetch + provenance/drift below
+// address potential, not currently validated, needs — the bundled snapshot
+// already pins content for reproducibility. Keep them isolated/opt-in.
+//
 // Fetch the source into tmpDir. With pinnedCommit, fetch that exact SHA for a
 // reproducible (frozen) checkout; otherwise shallow-clone the ref tip.
 function fetchSource(tmpDir, remote, ref, pinnedCommit) {
@@ -466,6 +470,8 @@ async function source(args, flags = {}) {
     }
 
     case 'drift': {
+      // EXPERIMENTAL: advisory only. `sync` overwrites local edits regardless,
+      // so this is not a strong integrity gate — don't rely on it in CI as one.
       const root = getProjectRoot();
       const targetName = args[1];
       const report = {};

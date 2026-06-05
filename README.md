@@ -116,6 +116,14 @@ never crashes), and `prepend`/`append` (body text). Keyed by `<type>/<name>`
 (a skill patch targets its `SKILL.md`). Remove the patch and re-run `setup` to
 revert.
 
+> **Experimental — not load-bearing.** `source drift`, `source lock` /
+> `--frozen`, and content `patches` solve *potential* rather than currently
+> validated needs (the bundled snapshot already pins content for reproducibility,
+> and `sync` overwrites local edits regardless of drift). They are isolated and
+> opt-in; the core value is multi-source merge + per-source curation + bundling.
+> Don't wire `source drift` into CI as an integrity gate expecting strong
+> guarantees.
+
 It supersedes the legacy `templates/merge-config.json` (still read as a fallback
 when `governance.json` declares no `conflict` block).
 

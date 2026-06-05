@@ -1,5 +1,9 @@
 'use strict';
 
+// EXPERIMENTAL (not load-bearing): for surgical edits, `.local` whole-file
+// override usually suffices. This solves a thinner, potential need — keep it
+// opt-in and don't treat it as a core guarantee.
+//
 // Content-level patching for installed artifacts. A patch is declared inline in
 // governance.json under sources.<name>.patches["<type>/<artifact>"] and is
 // applied at install time, after the winning source is chosen and before the
