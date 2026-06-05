@@ -1,5 +1,5 @@
 {
-  "_comment": "Curated subset of ECC artifacts for claudecode-omc. Generated 2026-04-27. Full ingestion remains in .upstream/ecc/; only these names install to ~/.claude/.",
+  "_comment": "Operative curation source for ECC artifacts. Apply with `omc-manage plan apply ecc` (auto-discovered as the default selection file); names are validated against the full synced ECC universe. Full ingestion remains in .upstream/ecc/; only these names install to ~/.claude/.",
   "skills": [
     "workspace-surface-audit",
     "agent-eval",
@@ -55,13 +55,9 @@
   ],
   "commands": [
     "harness-audit",
-    "agent-sort",
     "checkpoint",
-    "eval",
     "evolve",
-    "prompt-optimize",
     "quality-gate",
-    "rules-distill",
     "update-codemaps",
     "update-docs",
     "prp-prd",
@@ -71,7 +67,6 @@
     "prp-commit",
     "model-route",
     "feature-dev",
-    "context-budget",
     "resume-session",
     "save-session",
     "sessions",
