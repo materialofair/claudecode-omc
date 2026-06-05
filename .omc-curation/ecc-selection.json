@@ -49,7 +49,9 @@
     "performance-optimizer",
     "refactor-cleaner",
     "chief-of-staff",
-    "docs-lookup"
+    "docs-lookup",
+    "swift-reviewer",
+    "swift-build-resolver"
   ],
   "commands": [
     "harness-audit",
@@ -74,6 +76,10 @@
     "save-session",
     "sessions",
     "aside",
-    "prune"
+    "prune",
+    "hookify",
+    "hookify-list",
+    "hookify-configure",
+    "hookify-help"
   ]
 }
