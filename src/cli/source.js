@@ -31,7 +31,7 @@ function copyFileRecursive(src, dest) {
 // (local edits, upstream changes pulled in) can be detected later. This is what
 // separates a governed source from a blind copy.
 function hashFile(filePath) {
-  return 'sha256:' + crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex').slice(0, 16);
+  return 'sha256:' + crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex');
 }
 
 // Map of POSIX relative path → content hash for every file under dir (recursive,
@@ -54,6 +54,16 @@ function hashTree(dir) {
   };
   walk(dir, '');
   return out;
+}
+
+// Strip any inline credentials (https://user:token@host/…) before a remote URL
+// is logged to stdout or persisted into bundle.json/provenance.json.
+function redactRemote(remote) {
+  try {
+    const u = new URL(remote);
+    if (u.username || u.password) { u.username = ''; u.password = ''; return u.toString(); }
+  } catch { /* non-URL (e.g. scp-style or local path) — return as-is */ }
+  return remote;
 }
 
 function diffHashTrees(recorded = {}, current = {}) {
@@ -120,11 +130,17 @@ function parseMappingFlag(mappingFlag) {
 function fetchSource(tmpDir, remote, ref, pinnedCommit) {
   const opts = { encoding: 'utf8', timeout: 300000, stdio: ['ignore', 'pipe', 'pipe'] };
   if (pinnedCommit) {
+    // Defense-in-depth: a pinned commit comes from the lockfile JSON. Require a
+    // bare hex SHA so a crafted value can't be read as a git option, and pass it
+    // after `--` so it's unambiguously a ref, never a flag.
+    if (!/^[0-9a-f]{7,40}$/i.test(pinnedCommit)) {
+      return { status: 1, stderr: `Invalid pinned commit (not a hex SHA): ${JSON.stringify(pinnedCommit)}` };
+    }
     fs.mkdirSync(tmpDir, { recursive: true });
     const steps = [
       ['init', '-q', tmpDir],
       ['-C', tmpDir, 'remote', 'add', 'origin', remote],
-      ['-C', tmpDir, 'fetch', '--depth', '1', 'origin', pinnedCommit],
+      ['-C', tmpDir, 'fetch', '--depth', '1', 'origin', '--', pinnedCommit],
       ['-C', tmpDir, 'checkout', '-q', 'FETCH_HEAD'],
     ];
     let last;
@@ -141,7 +157,7 @@ function fetchSource(tmpDir, remote, ref, pinnedCommit) {
 
 async function syncRemoteSource(sourceName, sourceConfig, root, pinnedCommit = null) {
   const refLabel = pinnedCommit ? `${sourceConfig.ref} @ ${pinnedCommit.slice(0, 12)} (frozen)` : sourceConfig.ref;
-  console.log(`  Syncing ${sourceName} from ${sourceConfig.remote} (${refLabel})...`);
+  console.log(`  Syncing ${sourceName} from ${redactRemote(sourceConfig.remote)} (${refLabel})...`);
 
   const tmpDir = getSyncTempDir(sourceName, root);
   try {
@@ -201,7 +217,7 @@ async function syncRemoteSource(sourceName, sourceConfig, root, pinnedCommit = n
     await fsp.writeFile(path.join(metadataDir, 'bundle.json'), JSON.stringify({
       syncedAt,
       sourceName,
-      remote: sourceConfig.remote,
+      remote: redactRemote(sourceConfig.remote),
       ref: sourceConfig.ref,
       commit,
       kind: sourceConfig.kind || 'content-repo',
@@ -216,7 +232,7 @@ async function syncRemoteSource(sourceName, sourceConfig, root, pinnedCommit = n
     await fsp.writeFile(path.join(metadataDir, 'provenance.json'), JSON.stringify({
       syncedAt,
       sourceName,
-      remote: sourceConfig.remote,
+      remote: redactRemote(sourceConfig.remote),
       ref: sourceConfig.ref,
       commit,
       artifacts: provenance,
@@ -425,7 +441,11 @@ async function source(args, flags = {}) {
           try { commit = JSON.parse(fs.readFileSync(bundlePath, 'utf8')).commit || null; } catch { /* ignore */ }
         }
         if (!commit) { missing.push(name); continue; }
-        lock.sources[name] = { commit, ref: src.ref || 'main', lockedAt: new Date().toISOString() };
+        // Preserve lockedAt when the commit hasn't changed, to avoid timestamp
+        // churn in the version-controlled lockfile.
+        const prev = lock.sources[name];
+        const lockedAt = (prev && prev.commit === commit && prev.lockedAt) ? prev.lockedAt : new Date().toISOString();
+        lock.sources[name] = { commit, ref: src.ref || 'main', lockedAt };
         locked += 1;
       }
 
@@ -460,8 +480,15 @@ async function source(args, flags = {}) {
           report[name] = { status: 'no-provenance' };
           continue;
         }
+        let prov;
+        try {
+          prov = JSON.parse(fs.readFileSync(provPath, 'utf8'));
+        } catch {
+          report[name] = { status: 'corrupt-provenance' };
+          anyDrift = true; // integrity problem — fail CI like drift
+          continue;
+        }
         anyChecked = true;
-        const prov = JSON.parse(fs.readFileSync(provPath, 'utf8'));
         const perType = {};
         let sourceDrift = false;
         for (const artifactType of Object.keys(prov.artifacts || {})) {
@@ -491,9 +518,13 @@ async function source(args, flags = {}) {
             console.log(`○ ${name}: no provenance (run "omc-manage source sync ${name}")`);
             continue;
           }
+          if (r.status === 'corrupt-provenance') {
+            console.log(`✗ ${name}: corrupt provenance (re-sync to repair)`);
+            continue;
+          }
           const marker = r.status === 'drift' ? '✗' : '✓';
           console.log(`${marker} ${name}: ${r.status}${r.commit ? ` @ ${r.commit.slice(0, 12)}` : ''}`);
-          for (const [type, delta] of Object.entries(r.drift)) {
+          for (const [type, delta] of Object.entries(r.drift || {})) {
             for (const f of delta.changed) console.log(`    ~ ${type}/${f}`);
             for (const f of delta.added) console.log(`    + ${type}/${f}`);
             for (const f of delta.removed) console.log(`    - ${type}/${f}`);

@@ -16,9 +16,14 @@ function escapeRegExp(s) {
 }
 
 function splitFrontmatter(content) {
-  const m = content.match(/^---\n([\s\S]*?)\n---\n?/);
+  // CRLF-tolerant: match \r?\n so Windows-authored artifacts are parsed as
+  // frontmatter rather than slipping through as body (which would then get a
+  // second, duplicate frontmatter block prepended by a frontmatter patch).
+  const m = content.match(/^---\r?\n([\s\S]*?)\r?\n---[ \t]*\r?\n?/);
   if (!m) return { frontmatter: null, body: content };
-  return { frontmatter: m[1], body: content.slice(m[0].length) };
+  // Normalize CRs in the frontmatter block (we re-emit it as \n-joined lines);
+  // the body is left byte-for-byte so user content keeps its own line endings.
+  return { frontmatter: m[1].replace(/\r/g, ''), body: content.slice(m[0].length) };
 }
 
 // Serialize a scalar for a simple `key: value` frontmatter line, quoting only

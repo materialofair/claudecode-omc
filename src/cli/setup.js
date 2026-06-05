@@ -232,11 +232,12 @@ async function installNameBasedArtifacts(artifactType, sources, mergeConfig, ins
   const excludeList = (mergeConfig.exclude && mergeConfig.exclude[artifactType]) || [];
   if (excludeList.length > 0) {
     const excludeSet = new Set(excludeList);
-    const before = merged.length;
+    // Names actually present and removed — so the count and the listed names
+    // always agree (exclude entries absent from the catalog aren't reported).
+    const removedNames = merged.filter(item => excludeSet.has(item.name)).map(item => item.name);
     merged = merged.filter(item => !excludeSet.has(item.name));
-    const excluded = before - merged.length;
-    if (excluded > 0) {
-      console.log(`    excluded ${excluded} items: ${excludeList.filter(n => merged.every(m => m.name !== n)).join(', ')}`);
+    if (removedNames.length > 0) {
+      console.log(`    excluded ${removedNames.length} items: ${removedNames.join(', ')}`);
     }
   }
 

@@ -56,6 +56,15 @@ test('frontmatter patch on a doc without frontmatter creates one', () => {
   assert.match(content, /^---\nmodel: opus\n---\n# Just a body/);
 });
 
+test('CRLF frontmatter is parsed, not duplicated, by a frontmatter patch', () => {
+  const crlf = '---\r\nname: x\r\nmodel: sonnet\r\n---\r\nBody line\r\n';
+  const { content } = applyContentPatch(crlf, { frontmatter: { model: 'opus' } });
+  // Exactly one frontmatter block, and the model was overridden in place.
+  assert.equal((content.match(/^---$/gm) || []).length, 2, 'should have a single --- ... --- block');
+  assert.match(content, /^model: opus$/m);
+  assert.doesNotMatch(content, /model: sonnet/);
+});
+
 test('empty or absent patch returns content unchanged', () => {
   assert.equal(applyContentPatch(DOC, {}).content, DOC);
   assert.equal(applyContentPatch(DOC, null).content, DOC);

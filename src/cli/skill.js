@@ -192,7 +192,7 @@ async function recommend(args, flags) {
 
   // Load existing config
   const configPath = getMergeConfigPath(root);
-  let config = { merge_strategy: 'version-priority', auto_merge: true, allow_namespacing: false, sources: [], preferences: {} };
+  let config = { preferences: {} };
   if (fs.existsSync(configPath)) {
     try { config = JSON.parse(fs.readFileSync(configPath, 'utf8')); } catch {}
   }

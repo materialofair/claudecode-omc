@@ -1,5 +1,5 @@
 {
-  "_comment": "Operative curation source for ECC artifacts. Apply with `omc-manage plan apply ecc` (auto-discovered as the default selection file); names are validated against the full synced ECC universe. Full ingestion remains in .upstream/ecc/; only these names install to ~/.claude/.",
+  "_comment": "ECC curation. NOTE: governance.json inlines this same allowlist and takes precedence at install time; this file is the source it is kept in sync with (a test asserts they match) and the fallback the per-source mechanism uses for sources NOT inlined in governance.json. Apply with `omc-manage plan apply ecc` (auto-discovered as the default selection file); names are validated against the full synced ECC universe. Full ingestion remains in .upstream/ecc/; only these names install to ~/.claude/.",
   "skills": [
     "workspace-surface-audit",
     "agent-eval",

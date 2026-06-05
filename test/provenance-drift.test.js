@@ -76,6 +76,12 @@ test('source sync records provenance and source drift detects local edits', asyn
     const r = JSON.parse(drifted.stdout)[sourceName];
     assert.equal(r.status, 'drift');
     assert.deepEqual(r.drift.agents.changed, ['alpha.md']);
+
+    // Corrupt provenance → reported, not a crash, and non-zero exit.
+    await writeFile(path.join(syncedRoot, '.omc-source', 'provenance.json'), '{ not json');
+    const corrupt = runCli(['source', 'drift', sourceName, '--json'], { home, allowFailure: true });
+    assert.equal(corrupt.status, 1);
+    assert.equal(JSON.parse(corrupt.stdout)[sourceName].status, 'corrupt-provenance');
   } finally {
     await fsp.rm(syncedRoot, { recursive: true, force: true });
     await fsp.rm(path.join(repoRoot, `.tmp-sync-${sourceName}`), { recursive: true, force: true });

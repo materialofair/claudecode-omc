@@ -18,11 +18,14 @@ function loadGovernance() {
   if (_governanceCache !== undefined) return _governanceCache;
   try {
     const data = JSON.parse(fs.readFileSync(path.join(PKG_ROOT, '.omc-curation', 'governance.json'), 'utf8'));
-    _governanceCache = data && typeof data === 'object' ? data : {};
-  } catch {
-    _governanceCache = {};
-  }
-  return _governanceCache;
+    if (data && typeof data === 'object') {
+      _governanceCache = data;
+      return data;
+    }
+  } catch { /* fall through */ }
+  // Don't cache a missing/unreadable result — a transient failure shouldn't
+  // poison the manifest for the rest of the process.
+  return {};
 }
 
 // Load a source's curated allowlist from the in-repo .omc-curation/<name>-selection.json.
