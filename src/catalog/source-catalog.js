@@ -162,7 +162,8 @@ function listManifestFiles(sourceName, sourceConfig, root) {
   });
 }
 
-async function buildSourceCatalog(sourceName, root = getProjectRoot()) {
+async function buildSourceCatalog(sourceName, root = getProjectRoot(), options = {}) {
+  const { ignoreAllowlist = false } = options;
   const config = readConfig();
   const sourceConfig = config.sources[sourceName];
   if (!sourceConfig) {
@@ -177,9 +178,14 @@ async function buildSourceCatalog(sourceName, root = getProjectRoot()) {
     const artifactPath = getSourceArtifactDir(sourceName, artifactType, root);
     const present = fs.existsSync(artifactPath);
     const loader = getArtifactLoader(artifactType);
-    const loadedItems = (present && loader)
-      ? filterItemsByAllowlist(sourceConfig, artifactType, loader(artifactPath, sourceName))
-      : [];
+    // When re-curating (plan apply with a selection file), ignore the current
+    // allowlist so itemNames exposes the full available universe — otherwise the
+    // catalog pre-filters to already-allowed names and new selections can never
+    // be validated/added (chicken-and-egg).
+    const rawItems = (present && loader) ? loader(artifactPath, sourceName) : [];
+    const loadedItems = ignoreAllowlist
+      ? rawItems
+      : filterItemsByAllowlist(sourceConfig, artifactType, rawItems);
     upsertSurface(surfaces, {
       name: artifactType,
       harness: 'claude',

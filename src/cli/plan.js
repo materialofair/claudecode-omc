@@ -135,9 +135,21 @@ async function plan(args, flags = {}) {
 
       const root = getProjectRoot();
       const profile = flags.profile || 'claude-runtime';
-      const catalog = await buildSourceCatalog(sourceName, root);
+      // Resolve the curation source of truth: an explicit --selection-file wins,
+      // otherwise auto-discover the in-repo .omc-curation/<source>-selection.json
+      // so `plan apply <source>` applies the committed curation with no flags.
+      let selectionFile = flags.selectionFile;
+      if (!selectionFile) {
+        const defaultSelection = path.join(root, '.omc-curation', `${sourceName}-selection.json`);
+        if (fs.existsSync(defaultSelection)) {
+          selectionFile = defaultSelection;
+          console.log(`Using curation: ${path.relative(root, defaultSelection)}`);
+        }
+      }
+      // Re-curating: load the full available universe so new selections validate.
+      const catalog = await buildSourceCatalog(sourceName, root, { ignoreAllowlist: Boolean(selectionFile) });
       const planResult = buildInstallPlan(catalog, profile);
-      const selectionData = flags.selectionFile ? await readSelectionFile(flags.selectionFile) : {};
+      const selectionData = selectionFile ? await readSelectionFile(selectionFile) : {};
       const allowlist = extractAllowlistFromSelection(planResult, selectionData);
       const currentSource = readConfig().sources[sourceName] || {};
       const activation = {
