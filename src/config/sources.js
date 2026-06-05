@@ -6,6 +6,28 @@ const os = require('os');
 const CONFIG_DIR = path.join(os.homedir(), '.omc-manage');
 const CONFIG_PATH = path.join(CONFIG_DIR, 'sources.json');
 
+// Package root (src/config/sources.js → ../../). Holds the shipped .omc-curation
+// selection files that drive distribution-repo allowlists.
+const PKG_ROOT = path.resolve(__dirname, '..', '..');
+
+// Load a source's curated allowlist from the in-repo .omc-curation/<name>-selection.json.
+// This is the single source of truth shared by `plan apply` (maintainer) and the
+// end-user default config below — no hardcoded duplicate that could drift.
+function loadCurationAllowlist(sourceName) {
+  const selectionPath = path.join(PKG_ROOT, '.omc-curation', `${sourceName}-selection.json`);
+  try {
+    const data = JSON.parse(fs.readFileSync(selectionPath, 'utf8'));
+    if (!data || typeof data !== 'object') return undefined;
+    const allowlist = {};
+    for (const type of ['skills', 'agents', 'commands', 'hooks']) {
+      if (Array.isArray(data[type]) && data[type].length > 0) allowlist[type] = data[type];
+    }
+    return Object.keys(allowlist).length > 0 ? allowlist : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 const DEFAULT_DISTRIBUTION_MANIFESTS = [
   'package.json',
   '.claude-plugin/plugin.json',
@@ -53,6 +75,21 @@ function getDefaultConfig() {
         },
         kind: 'content-repo',
         harnesses: ['claude'],
+        profiles: DEFAULT_INSTALL_PROFILES,
+      },
+      ecc: {
+        remote: 'https://github.com/affaan-m/everything-claude-code.git',
+        ref: 'main',
+        priority: 4,
+        artifacts: ['agents', 'commands', 'skills'],
+        kind: 'distribution-repo',
+        installMode: 'auto',
+        harnesses: ['claude'],
+        manifests: ['plugin.json', 'marketplace.json', '.claude-plugin/marketplace.json'],
+        // Curated subset ships via .omc-curation/ecc-selection.json so a fresh
+        // install gets the vetted slice, not all 251 skills / 63 agents.
+        allowlist: loadCurationAllowlist('ecc'),
+        appliedProfile: 'claude-runtime',
         profiles: DEFAULT_INSTALL_PROFILES,
       },
       'anthropic-skills': {
