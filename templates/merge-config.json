@@ -1,12 +1,5 @@
 {
-  "merge_strategy": "version-priority",
-  "auto_merge": true,
-  "allow_namespacing": false,
-  "sources": [
-    { "name": "local", "priority": 1 },
-    { "name": "oh-my-claudecode", "priority": 2 },
-    { "name": "superpowers", "priority": 3 }
-  ],
+  "_comment": "DEPRECATED — superseded by .omc-curation/governance.json (the unified authority for priority + allowlist + conflict). Kept only as a fallback for the conflict block (preferences/exclude) when governance.json declares none. Priority now lives solely in governance.json / the source config, not here.",
   "preferences": {},
   "exclude": {
     "skills": [

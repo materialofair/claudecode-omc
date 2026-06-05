@@ -1,0 +1,113 @@
+{
+  "_comment": "Unified governance manifest — the single authoritative source for cross-source policy: per-source priority, per-source install allowlist, and conflict resolution. Authority order for allowlist: explicit config (plan apply) > this file's inline allowlist > .omc-curation/<name>-selection.json. Priority and conflict here override legacy templates/merge-config.json.",
+  "sources": {
+    "local": {
+      "priority": 1
+    },
+    "oh-my-claudecode": {
+      "priority": 2
+    },
+    "superpowers": {
+      "priority": 3
+    },
+    "ecc": {
+      "priority": 4,
+      "allowlist": {
+        "skills": [
+          "workspace-surface-audit",
+          "agent-eval",
+          "agent-harness-construction",
+          "agent-introspection-debugging",
+          "agent-sort",
+          "agentic-engineering",
+          "ai-first-engineering",
+          "ai-regression-testing",
+          "autonomous-agent-harness",
+          "autonomous-loops",
+          "continuous-agent-loop",
+          "eval-harness",
+          "gan-style-harness",
+          "iterative-retrieval",
+          "mcp-server-patterns",
+          "santa-method",
+          "skill-comply",
+          "skill-stocktake",
+          "strategic-compact",
+          "team-builder",
+          "token-budget-advisor",
+          "verification-loop",
+          "council",
+          "cost-aware-llm-pipeline",
+          "prompt-optimizer",
+          "context-budget",
+          "code-tour",
+          "codebase-onboarding",
+          "git-workflow",
+          "github-ops",
+          "regex-vs-llm-structured-text"
+        ],
+        "agents": [
+          "harness-optimizer",
+          "opensource-forker",
+          "opensource-sanitizer",
+          "opensource-packager",
+          "silent-failure-hunter",
+          "pr-test-analyzer",
+          "doc-updater",
+          "code-explorer",
+          "conversation-analyzer",
+          "comment-analyzer",
+          "loop-operator",
+          "type-design-analyzer",
+          "performance-optimizer",
+          "refactor-cleaner",
+          "chief-of-staff",
+          "docs-lookup",
+          "swift-reviewer",
+          "swift-build-resolver"
+        ],
+        "commands": [
+          "harness-audit",
+          "checkpoint",
+          "evolve",
+          "quality-gate",
+          "update-codemaps",
+          "update-docs",
+          "prp-prd",
+          "prp-plan",
+          "prp-implement",
+          "prp-pr",
+          "prp-commit",
+          "model-route",
+          "feature-dev",
+          "resume-session",
+          "save-session",
+          "sessions",
+          "aside",
+          "prune",
+          "hookify",
+          "hookify-list",
+          "hookify-configure",
+          "hookify-help"
+        ]
+      }
+    },
+    "anthropic-skills": {
+      "priority": 99
+    }
+  },
+  "conflict": {
+    "preferences": {},
+    "exclude": {
+      "skills": [
+        "ask",
+        "ccg",
+        "multi-model-research",
+        "test-gen",
+        "release",
+        "omc-teams",
+        "using-superpowers"
+      ]
+    }
+  }
+}

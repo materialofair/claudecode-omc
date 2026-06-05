@@ -10,6 +10,21 @@ const CONFIG_PATH = path.join(CONFIG_DIR, 'sources.json');
 // selection files that drive distribution-repo allowlists.
 const PKG_ROOT = path.resolve(__dirname, '..', '..');
 
+// The unified governance manifest: single authoritative source for cross-source
+// policy (per-source priority + allowlist, and conflict resolution). Cached per
+// process. Returns {} when absent so callers can fall back to legacy config.
+let _governanceCache;
+function loadGovernance() {
+  if (_governanceCache !== undefined) return _governanceCache;
+  try {
+    const data = JSON.parse(fs.readFileSync(path.join(PKG_ROOT, '.omc-curation', 'governance.json'), 'utf8'));
+    _governanceCache = data && typeof data === 'object' ? data : {};
+  } catch {
+    _governanceCache = {};
+  }
+  return _governanceCache;
+}
+
 // Load a source's curated allowlist from the in-repo .omc-curation/<name>-selection.json.
 // This is the single source of truth shared by `plan apply` (maintainer) and the
 // end-user default config below — no hardcoded duplicate that could drift.
@@ -151,10 +166,17 @@ function normalizeSourceConfig(name, source) {
     ? DEFAULT_DISTRIBUTION_MANIFESTS
     : []));
   source.profiles = dedupeStrings(source.profiles || DEFAULT_INSTALL_PROFILES);
-  // Curation is source-agnostic: an explicit allowlist (e.g. from `plan apply`)
-  // always wins; otherwise any source is governed by its in-repo
-  // .omc-curation/<name>-selection.json. No file → no allowlist → install all.
-  source.allowlist = normalizeAllowlist(source.allowlist) || normalizeAllowlist(loadCurationAllowlist(name));
+
+  // Unified governance.json is the authoritative cross-source policy.
+  const govSource = (loadGovernance().sources || {})[name] || {};
+  // Priority: governance wins when it declares one (single source of truth).
+  if (typeof govSource.priority === 'number') source.priority = govSource.priority;
+  // Allowlist authority: explicit config (e.g. `plan apply`) > governance.json
+  // inline allowlist > per-source .omc-curation/<name>-selection.json > none
+  // (no allowlist → install everything).
+  source.allowlist = normalizeAllowlist(source.allowlist)
+    || normalizeAllowlist(govSource.allowlist)
+    || normalizeAllowlist(loadCurationAllowlist(name));
 
   if (source.role === 'reference' && !source.profiles.includes('reference-only')) {
     source.profiles.push('reference-only');
@@ -289,6 +311,7 @@ module.exports = {
   updateSource,
   getSourceAllowlist,
   filterItemsByAllowlist,
+  loadGovernance,
   normalizeConfig,
   normalizeSourceConfig,
   DEFAULT_DISTRIBUTION_MANIFESTS,

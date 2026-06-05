@@ -4,7 +4,7 @@ const fsp = require('fs/promises');
 const path = require('path');
 const os = require('os');
 const { getProjectRoot, getScopedInstallTarget, getMergeConfigPath } = require('../config/paths');
-const { readConfig, filterItemsByAllowlist } = require('../config/sources');
+const { readConfig, filterItemsByAllowlist, loadGovernance } = require('../config/sources');
 const { getArtifactTypeNames, ARTIFACT_TYPES } = require('../config/artifact-types');
 const { detectConflicts, resolveConflicts, applyResolutions } = require('../merge/base-merger');
 const { loadHooksConfig, mergeHooksConfigs, hasHookLib } = require('../merge/hook-merger');
@@ -413,11 +413,18 @@ async function setup(args, flags = {}) {
   if (typeFilter) console.log(`Types: ${typeFilter.join(', ')}`);
   console.log('');
 
-  // Load merge config
-  const mergeConfigPath = getMergeConfigPath(root);
-  let mergeConfig = { preferences: {} };
-  if (fs.existsSync(mergeConfigPath)) {
-    try { mergeConfig = JSON.parse(fs.readFileSync(mergeConfigPath, 'utf8')); } catch {}
+  // Conflict policy: unified governance.json is authoritative; fall back to the
+  // legacy templates/merge-config.json when governance declares no conflict block.
+  const governanceConflict = loadGovernance().conflict;
+  let mergeConfig;
+  if (governanceConflict && typeof governanceConflict === 'object') {
+    mergeConfig = { preferences: {}, ...governanceConflict };
+  } else {
+    const mergeConfigPath = getMergeConfigPath(root);
+    mergeConfig = { preferences: {} };
+    if (fs.existsSync(mergeConfigPath)) {
+      try { mergeConfig = JSON.parse(fs.readFileSync(mergeConfigPath, 'utf8')); } catch {}
+    }
   }
 
   const allTypes = getArtifactTypeNames().filter(type => type !== 'claude-md');

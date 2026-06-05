@@ -81,20 +81,32 @@ All skills include comprehensive reference materials and follow ECC standards fo
 | ecc | 4 | yes | [everything-claude-code](https://github.com/affaan-m/everything-claude-code) distribution; ships a curated subset via `.omc-curation/ecc-selection.json` (not all 251 skills) |
 | your own | 5+ | opt-in | Distribution-style repos added via `source add --kind distribution-repo` |
 
-### Per-source curation
+### Governance manifest
 
-Any source — not just ECC — can be trimmed to a vetted subset by dropping an
-allowlist file at `.omc-curation/<source>-selection.json`:
+`.omc-curation/governance.json` is the single authoritative manifest for
+cross-source policy — per-source **priority**, per-source install **allowlist**,
+and **conflict** resolution (`preferences`, `exclude`) — in one place:
 
 ```json
-{ "skills": ["skill-a", "skill-b"], "agents": ["agent-x"], "commands": [] }
+{
+  "sources": {
+    "local":            { "priority": 1 },
+    "ecc":              { "priority": 4, "allowlist": { "skills": ["…"], "agents": ["…"] } },
+    "anthropic-skills": { "priority": 99 }
+  },
+  "conflict": { "preferences": {}, "exclude": { "skills": ["ask", "ccg"] } }
+}
 ```
 
-The same file drives both the default config (fresh installs) and
-`omc-manage plan apply <source>` (which auto-discovers it). No file means no
-allowlist — the source installs everything. An explicit allowlist applied via
-`plan apply` always wins over the file. `ecc-selection.json` is just the first
-instance of this generic mechanism.
+It supersedes the legacy `templates/merge-config.json` (still read as a fallback
+when `governance.json` declares no `conflict` block).
+
+**Allowlist authority order** (highest first): an explicit allowlist written by
+`omc-manage plan apply <source>` → `governance.json`'s inline `allowlist` →
+`.omc-curation/<source>-selection.json` → none (install everything). So any
+source — not just ECC — can be curated either inline in `governance.json` or in
+its own `<source>-selection.json`; `ecc-selection.json` is just the first
+instance of that per-source mechanism.
 
 Local artifacts always win conflicts. Sources added via `source add` are
 appended at the next free priority. Add your own skills:
