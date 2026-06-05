@@ -3,6 +3,7 @@ const { spawnSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const fsp = require('fs/promises');
+const crypto = require('crypto');
 const { readConfig, setActiveSource, recordSync, addSource, removeSource } = require('../config/sources');
 const { getProjectRoot, getSourceArtifactDir, getSyncTargetDir, getSyncTempDir, getSourceMetadataDir } = require('../config/paths');
 const { buildSourceCatalog } = require('../catalog/source-catalog');
@@ -24,6 +25,49 @@ async function copyDirRecursive(src, dest) {
 function copyFileRecursive(src, dest) {
   return fsp.mkdir(path.dirname(dest), { recursive: true })
     .then(() => fsp.copyFile(src, dest));
+}
+
+// --- Provenance: content hashes + upstream commit, recorded per sync so drift
+// (local edits, upstream changes pulled in) can be detected later. This is what
+// separates a governed source from a blind copy.
+function hashFile(filePath) {
+  return 'sha256:' + crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex').slice(0, 16);
+}
+
+// Map of POSIX relative path → content hash for every file under dir (recursive,
+// so skill directories and flat .md files hash uniformly).
+function hashTree(dir) {
+  const out = {};
+  if (!fs.existsSync(dir)) return out;
+  const stat = fs.statSync(dir);
+  if (stat.isFile()) {
+    out[path.basename(dir)] = hashFile(dir);
+    return out;
+  }
+  const walk = (current, prefix) => {
+    for (const entry of fs.readdirSync(current, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+      const abs = path.join(current, entry.name);
+      const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
+      if (entry.isDirectory()) walk(abs, rel);
+      else if (entry.isFile()) out[rel] = hashFile(abs);
+    }
+  };
+  walk(dir, '');
+  return out;
+}
+
+function diffHashTrees(recorded = {}, current = {}) {
+  const added = [];
+  const removed = [];
+  const changed = [];
+  for (const key of Object.keys(current)) {
+    if (!(key in recorded)) added.push(key);
+    else if (recorded[key] !== current[key]) changed.push(key);
+  }
+  for (const key of Object.keys(recorded)) {
+    if (!(key in current)) removed.push(key);
+  }
+  return { added: added.sort(), removed: removed.sort(), changed: changed.sort() };
 }
 
 function parseMappingFlag(mappingFlag) {
@@ -65,9 +109,14 @@ async function syncRemoteSource(sourceName, sourceConfig, root) {
       return false;
     }
 
+    // Resolve the exact upstream commit this sync pulled (provenance + lock).
+    const headResult = spawnSync('git', ['-C', tmpDir, 'rev-parse', 'HEAD'], { encoding: 'utf8' });
+    const commit = headResult.status === 0 ? headResult.stdout.trim() : null;
+
     // Copy each declared artifact type
     const artifacts = sourceConfig.artifacts || ['skills'];
     const mapping = sourceConfig.mapping || {};
+    const provenance = {};
 
     for (const artifactType of artifacts) {
       const srcSubdir = mapping[artifactType] || artifactType;
@@ -85,6 +134,7 @@ async function syncRemoteSource(sourceName, sourceConfig, root) {
         const count = fs.statSync(destPath).isDirectory()
           ? fs.readdirSync(destPath).length : 1;
         console.log(`    ${artifactType}: ${count} items`);
+        provenance[artifactType] = hashTree(destPath);
       }
     }
 
@@ -100,17 +150,32 @@ async function syncRemoteSource(sourceName, sourceConfig, root) {
     }
 
     await fsp.mkdir(metadataDir, { recursive: true });
+    const syncedAt = new Date().toISOString();
     await fsp.writeFile(path.join(metadataDir, 'bundle.json'), JSON.stringify({
-      syncedAt: new Date().toISOString(),
+      syncedAt,
       sourceName,
       remote: sourceConfig.remote,
       ref: sourceConfig.ref,
+      commit,
       kind: sourceConfig.kind || 'content-repo',
       harnesses: sourceConfig.harnesses || ['claude'],
       artifacts: sourceConfig.artifacts || [],
       manifests: manifestFiles,
       profiles: sourceConfig.profiles || [],
     }, null, 2) + '\n', 'utf8');
+
+    // Provenance: per-file content hashes + the resolved commit, so `source drift`
+    // can later distinguish local edits from upstream changes.
+    await fsp.writeFile(path.join(metadataDir, 'provenance.json'), JSON.stringify({
+      syncedAt,
+      sourceName,
+      remote: sourceConfig.remote,
+      ref: sourceConfig.ref,
+      commit,
+      artifacts: provenance,
+    }, null, 2) + '\n', 'utf8');
+
+    if (commit) console.log(`    commit: ${commit.slice(0, 12)}`);
 
     return true;
   } finally {
@@ -251,6 +316,13 @@ async function source(args, flags = {}) {
         console.log(`[${name}] (priority ${src.priority})`);
         console.log(`  kind: ${src.kind || 'content-repo'}`);
         console.log(`  installMode: ${src.installMode || 'auto'}`);
+        const bundlePath = path.join(getSourceMetadataDir(name, root), 'bundle.json');
+        if (fs.existsSync(bundlePath)) {
+          try {
+            const bundle = JSON.parse(fs.readFileSync(bundlePath, 'utf8'));
+            if (bundle.commit) console.log(`  commit: ${bundle.commit.slice(0, 12)}`);
+          } catch { /* ignore unreadable bundle metadata */ }
+        }
         if (src.appliedProfile) {
           console.log(`  appliedProfile: ${src.appliedProfile}`);
         }
@@ -283,6 +355,67 @@ async function source(args, flags = {}) {
       } else {
         console.log('Never synced. Run: omc-manage source sync');
       }
+      break;
+    }
+
+    case 'drift': {
+      const root = getProjectRoot();
+      const targetName = args[1];
+      const report = {};
+      let anyDrift = false;
+      let anyChecked = false;
+
+      for (const [name, src] of Object.entries(config.sources)) {
+        if (targetName && name !== targetName) continue;
+        if (name === 'local') continue; // in-repo, nothing to compare against
+        const provPath = path.join(getSourceMetadataDir(name, root), 'provenance.json');
+        if (!fs.existsSync(provPath)) {
+          report[name] = { status: 'no-provenance' };
+          continue;
+        }
+        anyChecked = true;
+        const prov = JSON.parse(fs.readFileSync(provPath, 'utf8'));
+        const perType = {};
+        let sourceDrift = false;
+        for (const artifactType of Object.keys(prov.artifacts || {})) {
+          const dir = getSourceArtifactDir(name, artifactType, root);
+          const delta = diffHashTrees(prov.artifacts[artifactType], hashTree(dir));
+          if (delta.added.length || delta.removed.length || delta.changed.length) {
+            perType[artifactType] = delta;
+            sourceDrift = true;
+          }
+        }
+        report[name] = { status: sourceDrift ? 'drift' : 'clean', commit: prov.commit, syncedAt: prov.syncedAt, drift: perType };
+        if (sourceDrift) anyDrift = true;
+      }
+
+      if (targetName && !(targetName in report)) {
+        const validNames = Object.keys(config.sources).join(', ');
+        throw new Error(`Invalid source. Use: ${validNames}`);
+      }
+
+      if (flags.json) {
+        console.log(JSON.stringify(report, null, 2));
+      } else {
+        console.log('Drift Report');
+        console.log('============');
+        for (const [name, r] of Object.entries(report)) {
+          if (r.status === 'no-provenance') {
+            console.log(`○ ${name}: no provenance (run "omc-manage source sync ${name}")`);
+            continue;
+          }
+          const marker = r.status === 'drift' ? '✗' : '✓';
+          console.log(`${marker} ${name}: ${r.status}${r.commit ? ` @ ${r.commit.slice(0, 12)}` : ''}`);
+          for (const [type, delta] of Object.entries(r.drift)) {
+            for (const f of delta.changed) console.log(`    ~ ${type}/${f}`);
+            for (const f of delta.added) console.log(`    + ${type}/${f}`);
+            for (const f of delta.removed) console.log(`    - ${type}/${f}`);
+          }
+        }
+        if (!anyChecked) console.log('(no synced sources with provenance)');
+      }
+
+      if (anyDrift) process.exitCode = 1;
       break;
     }
 
@@ -332,7 +465,7 @@ async function source(args, flags = {}) {
     }
 
     default:
-      throw new Error(`Unknown subcommand: ${cmd}. Use: list, add, remove, set, sync, status, or inspect`);
+      throw new Error(`Unknown subcommand: ${cmd}. Use: list, add, remove, set, sync, status, drift, or inspect`);
   }
 }
 
