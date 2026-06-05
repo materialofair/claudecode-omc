@@ -58,7 +58,9 @@ All skills include comprehensive reference materials and follow ECC standards fo
 | `omc-manage setup [--force] [--dry-run] [--type <type>] [--source <name>]` | Install merged artifacts |
 | `omc-manage doctor` | Health checks; reports each source's `kind`, `profile`, and `allowlist`, and flags `staged` distribution sources awaiting `plan apply` |
 | `omc-manage source list` | Show configured sources |
-| `omc-manage source sync [<name>]` | Update upstream sources to latest |
+| `omc-manage source sync [<name>] [--frozen]` | Update upstream sources to latest, or (`--frozen`) to the commits pinned in `.omc-curation/sources.lock.json` |
+| `omc-manage source lock [<name>]` | Pin sources to their currently-synced upstream commit for reproducible installs |
+| `omc-manage source drift [<name>] [--json]` | Detect local edits / upstream changes vs the per-file hashes recorded at sync (exits non-zero on drift) |
 | `omc-manage source add <name> <url> [--kind ...] [--artifacts ...] [--manifests ...] [--profiles ...]` | Add a new source, including `guidelines` and `distribution-repo` sources |
 | `omc-manage source remove <name>` | Remove a registered source |
 | `omc-manage source inspect <name>` | Inspect a source as a bundle/catalog instead of only as flat artifacts |
@@ -76,7 +78,8 @@ All skills include comprehensive reference materials and follow ECC standards fo
 | local | 1 (highest) | yes | Your custom artifacts in `~/.omc-manage/local/` |
 | oh-my-claudecode | 2 | yes | Multi-agent orchestration framework |
 | superpowers | 3 | yes | Engineering process guardrails (TDD, debugging, etc.) |
-| ecc / your own | 4+ | opt-in | Distribution-style repos added via `source add --kind distribution-repo` |
+| ecc | 4 | yes | [everything-claude-code](https://github.com/affaan-m/everything-claude-code) distribution; ships a curated subset via `.omc-curation/ecc-selection.json` (not all 251 skills) |
+| your own | 5+ | opt-in | Distribution-style repos added via `source add --kind distribution-repo` |
 
 Local artifacts always win conflicts. Sources added via `source add` are
 appended at the next free priority. Add your own skills:

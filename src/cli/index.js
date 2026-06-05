@@ -20,6 +20,9 @@ function showHelp() {
   console.log('            Install merged artifacts (skills, agents, hooks, commands, etc.)');
   console.log('  doctor    Health checks for all artifact types');
   console.log('  source    list|add|remove|sync|status — manage sources');
+  console.log('            sync [<name>] [--frozen] — update sources (--frozen: to locked commits)');
+  console.log('            lock [<name>] — pin sources to their synced commit');
+  console.log('            drift [<name>] [--json] — detect edits vs recorded provenance');
   console.log('            inspect <name> — inspect source bundle/catalog');
   console.log('  plan      install <source> [--profile <name>] — build install plan');
   console.log('            apply <source> [--profile <name>] — materialize plan into source activation');
@@ -103,6 +106,7 @@ async function main(argv) {
     else if (arg === '--profile' && args[i + 1]) flags.profile = args[++i];
     else if (arg.startsWith('--profile=')) flags.profile = arg.split('=')[1];
     else if (arg === '--json') flags.json = true;
+    else if (arg === '--frozen') flags.frozen = true;
     else if (arg === '--apply') flags.apply = true;
     else if (arg === '--threshold' && args[i + 1]) flags.threshold = args[++i];
     else if (arg.startsWith('--threshold=')) flags.threshold = arg.split('=')[1];

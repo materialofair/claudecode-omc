@@ -1,0 +1,25 @@
+{
+  "_comment": "Pinned upstream commits for reproducible `source sync --frozen`. Update with `omc-manage source lock`.",
+  "sources": {
+    "superpowers": {
+      "commit": "6fd4507659784c351abbd2bc264c7162cfd386dc",
+      "ref": "main",
+      "lockedAt": "2026-06-05T08:06:28.114Z"
+    },
+    "anthropic-skills": {
+      "commit": "da20c92503b2e8ff1cf28ca81a0df4673debdbf7",
+      "ref": "main",
+      "lockedAt": "2026-06-05T08:06:28.114Z"
+    },
+    "oh-my-claudecode": {
+      "commit": "3e945671dcf3ed1c1bcc422862815f92c1999143",
+      "ref": "main",
+      "lockedAt": "2026-06-05T08:06:28.113Z"
+    },
+    "ecc": {
+      "commit": "bc8e12bb80c904a5a9864797ef1fd1212aa82f3d",
+      "ref": "main",
+      "lockedAt": "2026-06-05T08:06:28.114Z"
+    }
+  }
+}

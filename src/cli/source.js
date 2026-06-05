@@ -70,6 +70,31 @@ function diffHashTrees(recorded = {}, current = {}) {
   return { added: added.sort(), removed: removed.sort(), changed: changed.sort() };
 }
 
+// --- Lockfile: pins each source to an exact upstream commit for reproducible
+// syncs. Lives in-repo at .omc-curation/sources.lock.json so it ships and is
+// version-controlled alongside the curation it locks.
+function getLockPath(root) {
+  return path.join(root, '.omc-curation', 'sources.lock.json');
+}
+
+function readLock(root) {
+  try {
+    const data = JSON.parse(fs.readFileSync(getLockPath(root), 'utf8'));
+    return data && typeof data.sources === 'object' ? data : { sources: {} };
+  } catch {
+    return { sources: {} };
+  }
+}
+
+async function writeLock(root, lock) {
+  const lockPath = getLockPath(root);
+  await fsp.mkdir(path.dirname(lockPath), { recursive: true });
+  await fsp.writeFile(lockPath, JSON.stringify({
+    _comment: 'Pinned upstream commits for reproducible `source sync --frozen`. Update with `omc-manage source lock`.',
+    ...lock,
+  }, null, 2) + '\n', 'utf8');
+}
+
 function parseMappingFlag(mappingFlag) {
   if (!mappingFlag) return {};
 
@@ -90,8 +115,33 @@ function parseMappingFlag(mappingFlag) {
   return mapping;
 }
 
-async function syncRemoteSource(sourceName, sourceConfig, root) {
-  console.log(`  Syncing ${sourceName} from ${sourceConfig.remote} (${sourceConfig.ref})...`);
+// Fetch the source into tmpDir. With pinnedCommit, fetch that exact SHA for a
+// reproducible (frozen) checkout; otherwise shallow-clone the ref tip.
+function fetchSource(tmpDir, remote, ref, pinnedCommit) {
+  const opts = { encoding: 'utf8', timeout: 300000, stdio: ['ignore', 'pipe', 'pipe'] };
+  if (pinnedCommit) {
+    fs.mkdirSync(tmpDir, { recursive: true });
+    const steps = [
+      ['init', '-q', tmpDir],
+      ['-C', tmpDir, 'remote', 'add', 'origin', remote],
+      ['-C', tmpDir, 'fetch', '--depth', '1', 'origin', pinnedCommit],
+      ['-C', tmpDir, 'checkout', '-q', 'FETCH_HEAD'],
+    ];
+    let last;
+    for (const args of steps) {
+      last = spawnSync('git', args, opts);
+      if (last.status !== 0) return last;
+    }
+    return last;
+  }
+  return spawnSync('git', [
+    'clone', '--depth', '1', '--branch', ref, '--single-branch', remote, tmpDir,
+  ], opts);
+}
+
+async function syncRemoteSource(sourceName, sourceConfig, root, pinnedCommit = null) {
+  const refLabel = pinnedCommit ? `${sourceConfig.ref} @ ${pinnedCommit.slice(0, 12)} (frozen)` : sourceConfig.ref;
+  console.log(`  Syncing ${sourceName} from ${sourceConfig.remote} (${refLabel})...`);
 
   const tmpDir = getSyncTempDir(sourceName, root);
   try {
@@ -99,10 +149,7 @@ async function syncRemoteSource(sourceName, sourceConfig, root) {
       await fsp.rm(tmpDir, { recursive: true, force: true });
     }
 
-    const cloneResult = spawnSync('git', [
-      'clone', '--depth', '1', '--branch', sourceConfig.ref,
-      '--single-branch', sourceConfig.remote, tmpDir,
-    ], { encoding: 'utf8', timeout: 300000, stdio: ['ignore', 'pipe', 'pipe'] });
+    const cloneResult = fetchSource(tmpDir, sourceConfig.remote, sourceConfig.ref, pinnedCommit);
 
     if (cloneResult.status !== 0) {
       console.error(`  Clone failed: ${cloneResult.stderr || cloneResult.error}`);
@@ -284,17 +331,21 @@ async function source(args, flags = {}) {
 
       const root = getProjectRoot();
       const targetName = args[1]; // optional: specific source name
+      const lock = flags.frozen ? readLock(root) : { sources: {} };
+      if (flags.frozen) console.log('(frozen: syncing to locked commits)\n');
       let success = true;
 
       for (const [name, src] of Object.entries(config.sources)) {
         if (name === 'local') continue; // local is in-repo, no sync needed
         if (targetName && name !== targetName) continue;
-        if (!flags.all && !targetName && !flags[name]) {
-          // Default: sync all remote sources
-        }
-
         if (!src.remote) continue;
-        const ok = await syncRemoteSource(name, src, root);
+
+        let pinnedCommit = null;
+        if (flags.frozen) {
+          pinnedCommit = (lock.sources[name] || {}).commit || null;
+          if (!pinnedCommit) console.log(`  ${name}: no lock entry, syncing ref tip`);
+        }
+        const ok = await syncRemoteSource(name, src, root, pinnedCommit);
         if (!ok) success = false;
         console.log('');
       }
@@ -354,6 +405,42 @@ async function source(args, flags = {}) {
         console.log(`Last sync: ${config.lastSync}`);
       } else {
         console.log('Never synced. Run: omc-manage source sync');
+      }
+      break;
+    }
+
+    case 'lock': {
+      const root = getProjectRoot();
+      const targetName = args[1];
+      const lock = readLock(root);
+      let locked = 0;
+      const missing = [];
+
+      for (const [name, src] of Object.entries(config.sources)) {
+        if (targetName && name !== targetName) continue;
+        if (!src.remote) continue;
+        const bundlePath = path.join(getSourceMetadataDir(name, root), 'bundle.json');
+        let commit = null;
+        if (fs.existsSync(bundlePath)) {
+          try { commit = JSON.parse(fs.readFileSync(bundlePath, 'utf8')).commit || null; } catch { /* ignore */ }
+        }
+        if (!commit) { missing.push(name); continue; }
+        lock.sources[name] = { commit, ref: src.ref || 'main', lockedAt: new Date().toISOString() };
+        locked += 1;
+      }
+
+      if (targetName && !config.sources[targetName]) {
+        const validNames = Object.keys(config.sources).join(', ');
+        throw new Error(`Invalid source. Use: ${validNames}`);
+      }
+
+      await writeLock(root, { sources: lock.sources });
+      console.log(`Locked ${locked} source(s) → ${path.relative(root, getLockPath(root))}`);
+      for (const [name, entry] of Object.entries(lock.sources)) {
+        if (!targetName || name === targetName) console.log(`  ${name}: ${entry.commit.slice(0, 12)} (${entry.ref})`);
+      }
+      if (missing.length > 0) {
+        console.log(`  unlocked (no synced commit): ${missing.join(', ')} — run "omc-manage source sync" first`);
       }
       break;
     }
@@ -465,7 +552,7 @@ async function source(args, flags = {}) {
     }
 
     default:
-      throw new Error(`Unknown subcommand: ${cmd}. Use: list, add, remove, set, sync, status, drift, or inspect`);
+      throw new Error(`Unknown subcommand: ${cmd}. Use: list, add, remove, set, sync, lock, status, drift, or inspect`);
   }
 }
 
