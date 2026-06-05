@@ -85,18 +85,36 @@ All skills include comprehensive reference materials and follow ECC standards fo
 
 `.omc-curation/governance.json` is the single authoritative manifest for
 cross-source policy — per-source **priority**, per-source install **allowlist**,
-and **conflict** resolution (`preferences`, `exclude`) — in one place:
+content **patches**, and **conflict** resolution (`preferences`, `exclude`) — in
+one place:
 
 ```json
 {
   "sources": {
     "local":            { "priority": 1 },
-    "ecc":              { "priority": 4, "allowlist": { "skills": ["…"], "agents": ["…"] } },
+    "ecc": {
+      "priority": 4,
+      "allowlist": { "skills": ["…"], "agents": ["…"] },
+      "patches": {
+        "agents/swift-reviewer": {
+          "frontmatter": { "model": "opus" },
+          "replace": [{ "find": "MUST BE USED for Swift", "with": "Use for Swift" }],
+          "append": "\n## Project note\nFollow our SwiftLint config.\n"
+        }
+      }
+    },
     "anthropic-skills": { "priority": 99 }
   },
   "conflict": { "preferences": {}, "exclude": { "skills": ["ask", "ccg"] } }
 }
 ```
+
+**Content patches** edit a winning artifact's content as it installs, without
+forking the whole file: `frontmatter` (override scalar YAML keys like `model`/
+`description`), `replace` (literal body find→replace; a missing target warns,
+never crashes), and `prepend`/`append` (body text). Keyed by `<type>/<name>`
+(a skill patch targets its `SKILL.md`). Remove the patch and re-run `setup` to
+revert.
 
 It supersedes the legacy `templates/merge-config.json` (still read as a fallback
 when `governance.json` declares no `conflict` block).

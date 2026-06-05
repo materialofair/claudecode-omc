@@ -11,6 +11,7 @@ const { loadHooksConfig, mergeHooksConfigs, hasHookLib } = require('../merge/hoo
 const { loadClaudeMd, mergeIntoExisting, assembleSections } = require('../merge/claude-md-merger');
 const { loadSettingsFragment, mergeSettingsFragments } = require('../merge/settings-merger');
 const { collectSourceDirsForType, getArtifactLoader } = require('../merge/artifact-source-loader');
+const { applyContentPatch } = require('../merge/content-patch');
 
 const OMC_VERSION_PATH = path.join(os.homedir(), '.claude', '.omc-version.json');
 const OMC_CONFIG_PATH = path.join(os.homedir(), '.claude', '.omc-config.json');
@@ -256,18 +257,48 @@ async function installNameBasedArtifacts(artifactType, sources, mergeConfig, ins
 
   await fsp.mkdir(installTarget, { recursive: true });
   let fileCount = 0;
+  let patchedCount = 0;
+
+  // Content patches: governance.json sources.<name>.patches["<type>/<artifact>"]
+  // are applied to the winning artifact's content as it is written.
+  const govSources = loadGovernance().sources || {};
+  const patchFor = (item) => {
+    const patches = (govSources[item.sourceName] || {}).patches;
+    return patches ? patches[`${artifactType}/${item.name}`] : undefined;
+  };
 
   for (const item of merged) {
+    const dest = path.join(installTarget, getManagedPathForItem(artifactType, item));
+    const patch = patchFor(item);
+
+    // (dry-run already returned above; this loop only runs for real installs)
     if (artifactType === 'skills' || item.isDirectory) {
-      const dest = path.join(installTarget, getManagedPathForItem(artifactType, item));
       fileCount += await copyDirectory(item.path, dest, flags);
+      // A skill patch targets its entry file (SKILL.md) inside the copied dir.
+      if (patch) {
+        const skillFile = path.join(dest, 'SKILL.md');
+        if (fs.existsSync(skillFile)) {
+          const { content, warnings } = applyContentPatch(fs.readFileSync(skillFile, 'utf8'), patch);
+          await fsp.writeFile(skillFile, content, 'utf8');
+          patchedCount += 1;
+          for (const w of warnings) console.log(`    patch warn (${item.name}): ${w}`);
+        }
+      }
     } else {
-      const dest = path.join(installTarget, getManagedPathForItem(artifactType, item));
       await fsp.mkdir(path.dirname(dest), { recursive: true });
-      await fsp.copyFile(item.path, dest);
+      if (patch) {
+        const { content, warnings } = applyContentPatch(fs.readFileSync(item.path, 'utf8'), patch);
+        await fsp.writeFile(dest, content, 'utf8');
+        patchedCount += 1;
+        for (const w of warnings) console.log(`    patch warn (${item.name}): ${w}`);
+      } else {
+        await fsp.copyFile(item.path, dest);
+      }
       fileCount += 1;
     }
   }
+
+  if (patchedCount > 0) console.log(`    patched ${patchedCount} item(s) from governance`);
 
   return {
     count: fileCount,

@@ -1,5 +1,5 @@
 {
-  "_comment": "Unified governance manifest — the single authoritative source for cross-source policy: per-source priority, per-source install allowlist, and conflict resolution. Authority order for allowlist: explicit config (plan apply) > this file's inline allowlist > .omc-curation/<name>-selection.json. Priority and conflict here override legacy templates/merge-config.json.",
+  "_comment": "Unified governance manifest — the single authoritative source for cross-source policy: per-source priority, per-source install allowlist, content patches, and conflict resolution. Authority order for allowlist: explicit config (plan apply) > this file's inline allowlist > .omc-curation/<name>-selection.json. Patches (sources.<name>.patches['<type>/<artifact>']) edit the winning artifact's content at install: frontmatter overrides, replace (find/with), prepend, append. Priority and conflict here override legacy templates/merge-config.json.",
   "sources": {
     "local": {
       "priority": 1
