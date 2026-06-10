@@ -21,8 +21,42 @@ description: >-
 origin: community
 metadata:
   author: YannJY02
-  version: "1.2.0"
+  version: "1.3.0"
   changelog: |
+    1.3.0 — Phase 0.7 Project Context Probe. The skill now reads the actual
+            repo (stack manifest, git state, README/CLAUDE.md/AGENTS.md)
+            before producing the optimized prompt, so recommendations cite
+            real file paths, branch names, and declared versions instead of
+            generic templates. Hard rules R1-R6.5 prevent the probe from
+            misleading downstream agents:
+              • R1 — 3-section Facts / Inferences (UNVERIFIED) / Unknown block
+              • R2 — never reference code symbols the probe did not actually Read
+                     (commit subjects and branch names are not code verification)
+              • R3 — branch names do not determine intent; skill selection uses
+                     user prompt + Facts.stack only
+              • R4 — declared manifest version ≠ installed version; lockfile
+                     must be checked when exact runtime version matters
+              • R5 — README/CLAUDE.md/AGENTS.md content gets 1 line + source +
+                     last-modified date; declared-vs-detected conflicts get
+                     an explicit ⚠️ flag
+              • R6 — mandatory "Re-verify before mutating" footer in every block
+              • R6.5 — probe failures are explicit ("PROBE FAILED: <reason>"),
+                       never silently empty
+            Section 3 (Optimized Prompt — Full) now MUST start with the verbatim
+            Context Block and cite ≥ 2 Facts. Self-check gate added before
+            publishing output. New Example 5 demonstrates the full probe →
+            3-section block → safe "starting points to verify" output pattern
+            on a real SwiftUI iOS scenario. Budget: ≤ 6 read-only tool calls.
+            Graceful degradation: works in non-git dirs, unknown stacks, and
+            repos without self-description docs.
+    1.2.1 — Fix phantom `/tdd` references (13 occurrences across Phase 1.5
+            template, Phase 3 By-Intent table, Section 4 Quick Patterns,
+            and all four examples). No `tdd` skill or command actually
+            exists; the canonical name is `test-driven-development`
+            (superpowers) — already mapped in the Phase 0.5 alias table
+            but not applied to our own templates. This release closes that
+            self-inconsistency. Added explicit `/tdd → /test-driven-development`
+            row in the alias table to prevent regression.
     1.2.0 — Skill Existence & Alias Resolution (Phase 0.5) so we stop
             recommending phantom skills (`tdd-workflow`, `search-first`,
             `blueprint`, `tdd-guide` agent, etc. that don't exist on most
@@ -146,6 +180,7 @@ or add a verification note.
 | Generic ECC name | superpowers / OMC actual | Verification |
 |---|---|---|
 | `tdd-workflow` (skill) | `test-driven-development` (superpowers) OR `tdd-generator` (OMC) | `ls ~/.claude/skills/test-driven-development` |
+| `/tdd` (slash) — **no such command/skill** | `/test-driven-development` (slash-invokes the superpowers skill) | `ls ~/.claude/skills/test-driven-development` |
 | `verification-loop` (skill) | `verification-before-completion` (superpowers) OR `verification-loop` (OMC) | both common |
 | `search-first` (skill) | `external-context` OR `iterative-retrieval` | check both |
 | `blueprint` (skill) | **`conductor`** (preferred multi-session driver) | `ls ~/.claude/skills/conductor` |
@@ -168,7 +203,83 @@ they run `omc-manage skill index --scope user` (or just `omc-manage setup`,
 which regenerates it as a side effect). For a quality audit, use
 `/oh-my-claudecode:skill-stocktake`.
 
-### Phase 1: Intent Detection
+### Phase 0.7: Project Context Probe (cheap, deterministic)
+
+**Goal:** Ground the optimized prompt in *what is actually true in this repo
+right now*, not in generic templates. Without this phase, the skill produces
+plausible-sounding prompts that may reference nonexistent files, wrong
+versions, or off-stack tooling — the user's actual complaint.
+
+**Budget:** ≤ 6 read-only tool calls. Each step is independent — failures
+degrade gracefully (see R6.5), never abort the whole phase.
+
+**5 probe actions, in order:**
+
+| # | Action | Tool & Command | Output field |
+|---|--------|---------------|--------------|
+| 1 | Confirm git repo | `Bash: git rev-parse --is-inside-work-tree 2>/dev/null` | `is_git_repo: true/false` |
+| 2 | Scan stack manifests at repo root | One `Glob` with combined pattern: `{package.json,Package.swift,Cargo.toml,go.mod,pyproject.toml,requirements.txt,*.csproj,Gemfile,pubspec.yaml,pom.xml,build.gradle*,mix.exs,composer.json}` | `manifests: [paths]` |
+| 3 | Read top manifest | `Read` first 50 lines of highest-priority match | `stack: <name + declared version>`, `stack_source: <manifest>:<line>` |
+| 4 | Git current state (one call) | `Bash: git rev-parse --abbrev-ref HEAD && echo --- && git status --short && echo --- && git log -3 --oneline && echo --- && git diff --stat HEAD~1 2>/dev/null \| head -10` | `branch`, `uncommitted`, `recent_commits` (subjects only), `recent_diff_stat` |
+| 5 | Project self-description | `Glob {CLAUDE.md,AGENTS.md,README.md}` at repo root; `Read` first 30 lines of highest-priority match (priority: CLAUDE.md > AGENTS.md > README.md) | `intent_source`, `intent_text` (first non-empty heading + first ~3 prose lines), `intent_last_modified` |
+
+**Graceful degradation:**
+
+- Action 1 = `false` → skip action 4. Mark `Repo`, `branch`, `uncommitted`, `recent_commits` as `not in a git repo`. Continue actions 2, 3, 5.
+- Action 2 returns `[]` → `stack: unknown — language-agnostic recommendations apply`.
+- Action 5 finds none → `intent: no self-description found at repo root`.
+- Any single step throws → mark only that field `PROBE FAILED: <one-line reason>` (R6.5). Continue.
+
+**Output: Project Context Block (3-section structure, ALWAYS produced)**
+
+The probe **always** emits this block, even when most fields are `UNKNOWN`.
+It is appended to the top of `Section 3: Optimized Prompt` (see Output
+Format) and must remain verbatim — no paraphrasing, no summarization.
+
+```markdown
+## 🔍 Project Context (probed YYYY-MM-DD HH:MM — starting point, NOT ground truth)
+
+### Facts (directly observed in probe)
+- Stack: <name + declared version>  ← from `<manifest>:<line>` (declared, installed version not verified)
+- Repo: <basename of cwd> @ branch `<branch>` (<N commits ahead of <base>, or "no upstream tracking">)
+- Uncommitted: <M/A/D files, or "clean working tree">
+- Recent commit subjects (commit messages only — NOT code verification):
+  - `<hash>` "<subject>"
+  - `<hash>` "<subject>"
+- Recent diff scope (`git diff --stat HEAD~1`): <file>: +N -M (or "no diff since HEAD~1")
+- Project self-description (`<source-file>:<line>`, last modified <date>): "<first non-empty heading + opening line>"
+
+### Inferences (UNVERIFIED — confirm before acting)
+- <e.g., "Likely SwiftUI iOS work based on Package.swift + branch name">
+- <e.g., "Stack manifest declares X but no lockfile read — installed version may differ">
+
+### Unknown / Not Probed
+- Whether <symbol mentioned in commit subjects> actually exists in source — Read source before referencing it as if it does
+- Runtime/installed versions (only declared manifest was read)
+- Whether project self-description still matches current architecture (last modified <date>)
+
+⚠️ Re-verify before mutating: run `git status`, `Read` actual files. This block
+   is probe-time context, not authoritative. If observation contradicts this
+   block, trust observation and ignore this block.
+```
+
+**6 anti-misleading hard rules (binding on Phase 3 / Phase 4 outputs):**
+
+These rules prevent the probe from producing context that downstream agents
+treat as truth when it is in fact inference, name-based guessing, or stale
+data. Violation = regenerate the optimized prompt.
+
+| ID | Rule | Why |
+|----|------|-----|
+| **R1** | Block MUST be 3-section: `### Facts` / `### Inferences (UNVERIFIED)` / `### Unknown / Not Probed`. Never mix categories. A fact mis-labeled as fact-but-actually-inferred is the primary misleading vector. | Forces explicit epistemic status on every line. |
+| **R2** | **Do not reference code symbols the probe did not actually read.** A symbol seen only in a commit subject or branch name is NOT verified to exist. It may appear in `Inferences` or `Unknown`, never as an imperative ("extend `AuthService`"). | A commit titled "add AuthService stub" does not prove `AuthService` exists, is complete, or is at the path one might guess. |
+| **R3** | **Branch names do not determine intent.** A branch named `feat/auth` is a weak signal at best; it goes only in `Inferences`. Phase 3 skill selection is driven only by `user prompt + Facts.stack`. | Branch names are user-authored labels with no semantic guarantee. |
+| **R4** | **Manifest version ≠ installed version.** All version facts must be marked `declared in <manifest>, installed not verified`. Tasks that need exact runtime version must explicitly check lockfile (`package-lock.json`, `Cargo.lock`, `Package.resolved`, `poetry.lock`, etc.). | `package.json` says React 18, node_modules may have 17. |
+| **R5** | **README / CLAUDE.md / AGENTS.md content gets 1 line + source + last-modified date.** If declared description contradicts detected stack, append `⚠️ Conflict: declared "<X>" but stack indicates <Y> — verify with user`. | Self-description docs drift; stack manifests do not. |
+| **R6** | **Banner footer is mandatory.** The `⚠️ Re-verify before mutating` line MUST appear verbatim at the bottom of every Context Block. | Drives downstream agent to treat block as starting context, not ground truth. |
+| **R6.5** | **Probe failures are explicit, never silently empty.** Any failed action writes `PROBE FAILED: <reason>` for that field. Downstream agents seeing `PROBE FAILED` know to re-probe themselves; they would misread an empty field as "no problem". | An empty `uncommitted` field looks like a clean working tree. |
+
+
 
 Classify the user's task into one or more categories:
 
@@ -274,7 +385,7 @@ checklist before generating the optimized prompt.
 1. **不要直接改代码**。先用 systematic-debugging skill 定位根因
    - 列出至少 3 个候选假设
    - 对每个假设设计最小验证（添加日志 / 阅读相关代码）
-2. /tdd 写一个 failing 测试复现 bug（如果是 UI bug，写 e2e 用例）
+2. /test-driven-development 写一个 failing 测试复现 bug（如果是 UI bug，写 e2e 用例）
 3. 修复到 green
 4. /verify 跨平台验证（如适用，跑 macOS + Windows）
 5. /code-review
@@ -308,21 +419,33 @@ one level. So a MEDIUM task with 2 intents → HIGH → conductor defaults ON.
 
 ### Phase 3: ECC Component Matching
 
-Map intent + scope + tech stack (from Phase 0) to specific ECC components.
+Map intent + scope + **Phase 0.7 `Facts.stack`** to specific ECC components.
+
+**HARD RULE (binding):** Component selection MUST be driven by `Project
+Context Block → Facts → Stack` when present. When matching the By-Tech-Stack
+table below, **skip rows that do not match** the detected stack — never list
+React skills for a Swift project, never list Django skills for a Go project.
+`Inferences` and `Unknown` fields are advisory only — they MAY surface a
+"verify this assumption" note, but MUST NOT drive skill selection.
+
+If `Facts.stack` is `unknown` (no manifest detected), fall back to the
+language-agnostic intent-only recommendations and explicitly say so in
+Section 5 rationale: "Stack unknown — recommendations are generic; user
+should re-run after declaring stack."
 
 #### By Intent Type
 
 | Intent | Commands | Skills | Agents |
 |--------|----------|--------|--------|
-| New Feature | /plan, /tdd, /code-review, /verify | tdd-workflow, verification-loop | planner, tdd-guide, code-reviewer |
-| **Bug Fix** | /tdd, /verify | **systematic-debugging (REQUIRED first)**, trace, analyze, debug, verification-loop | **debugger**, tdd-guide, code-reviewer |
+| New Feature | /plan, /test-driven-development, /code-review, /verify | tdd-workflow, verification-loop | planner, tdd-guide, code-reviewer |
+| **Bug Fix** | /test-driven-development, /verify | **systematic-debugging (REQUIRED first)**, trace, analyze, debug, verification-loop | **debugger**, tdd-guide, code-reviewer |
 | **Bug Fix (intermittent / 偶现)** | /verify | systematic-debugging, trace, **e2e (for flaky reproduction harness)** | debugger, tracer |
 | **Bug Fix (cross-platform)** | /verify | systematic-debugging, **electron-driver** (if Electron) | debugger, code-reviewer |
 | **Performance** | /verify | analyze, trace, verification-loop | architect, code-reviewer |
 | Refactor | /refactor-clean, /code-review, /verify | verification-loop | refactor-cleaner, code-reviewer |
 | Research | /plan | search-first, iterative-retrieval, external-context | — |
-| **Research-then-Build** | /plan | external-context (research) → **conductor** (track delivery) → /tdd per phase | planner → executor |
-| Testing | /tdd, /e2e, /test-coverage | tdd-workflow, e2e-testing | tdd-guide, e2e-runner |
+| **Research-then-Build** | /plan | external-context (research) → **conductor** (track delivery) → /test-driven-development per phase | planner → executor |
+| Testing | /test-driven-development, /e2e, /test-coverage | tdd-workflow, e2e-testing | tdd-guide, e2e-runner |
 | Review | /code-review | security-review | code-reviewer, security-reviewer |
 | Documentation | /update-docs, /update-codemaps | — | doc-updater, writer |
 | Infrastructure | /plan, /verify | docker-patterns, deployment-patterns, database-migrations | architect |
@@ -545,9 +668,28 @@ If Phase 0 auto-detected the answer, state it instead of asking.
 ### Section 3: Optimized Prompt — Full Version
 
 Present the complete optimized prompt inside a single fenced code block.
-The prompt must be self-contained and ready to copy-paste. Include:
-- Clear task description with context
-- Tech stack (detected or specified)
+The prompt must be self-contained and ready to copy-paste.
+
+**MANDATORY STRUCTURE (binding):**
+
+1. **First**, paste the Project Context Block from Phase 0.7 **verbatim**.
+   Do not summarize, do not paraphrase. The downstream agent needs the same
+   epistemic separation (Facts / Inferences / Unknown) the probe produced.
+2. **Then**, a blank line.
+3. **Then**, the task content, which MUST:
+   - Cite **at least 2 specific items from `Facts`** by file path, branch
+     name, manifest line, or commit hash. Generic language like "use the
+     existing auth code" is a FAIL — replace with "Read
+     `Sources/Auth/LoginView.swift` (uncommitted change, see Facts)".
+   - Phrase next-step references as `starting points to verify`, NOT as
+     imperatives. Good: "Read `LoginView.swift` first to see what's
+     already there." Bad: "Extend `LoginView.swift`."
+   - Never reference a code symbol that appeared only in `Inferences` or
+     `Unknown` (R2 — see Phase 0.7). Such references must downgrade to
+     "search `Grep` for X before assuming it exists."
+
+**Other required content:**
+- Clear task description (after Context Block)
 - /command invocations at the right workflow stages
 - Acceptance criteria
 - Verification steps
@@ -556,21 +698,30 @@ The prompt must be self-contained and ready to copy-paste. Include:
 For items that reference blueprint, write: "Use the blueprint skill to..."
 (not `/blueprint`, since blueprint is a skill, not a command).
 
+**Self-check gate (run before publishing Section 3 output):**
+
+| Check | If FAIL |
+|-------|---------|
+| Does Section 3 start with the verbatim Project Context Block? | Regenerate; prepend the block |
+| Does the task content cite ≥ 2 items from `Facts` by name/path? | Regenerate; replace generic references with specific Facts |
+| Does any imperative reference a symbol that only appeared in `Inferences` or `Unknown`? | Regenerate; downgrade to "verify before extending" |
+| Is the `⚠️ Re-verify before mutating` footer present in the block? | Regenerate; add the footer |
+
 ### Section 4: Optimized Prompt — Quick Version
 
 A compact version for experienced ECC users. Vary by intent type:
 
 | Intent | Quick Pattern |
 |--------|--------------|
-| New Feature | `/plan [feature]. /tdd to implement. /code-review. /verify.` |
-| Bug Fix | `Use systematic-debugging for [bug] — list 3 hypotheses, verify each. Then /tdd: write failing test, fix to green. /verify.` |
+| New Feature | `/plan [feature]. /test-driven-development to implement. /code-review. /verify.` |
+| Bug Fix | `Use systematic-debugging for [bug] — list 3 hypotheses, verify each. Then /test-driven-development: write failing test, fix to green. /verify.` |
 | Bug Fix (intermittent) | `Use trace skill for [intermittent bug] — competing hypotheses with evidence. Build flaky-repro harness in /e2e. Fix only after 100% repro. /verify.` |
 | Bug Fix (cross-platform) | `Use systematic-debugging for [bug]. Repro on both [platform A] and [platform B]. Fix. /verify on both platforms.` |
 | Performance | `Use analyze for [slow path] — measure baseline first (timing/profile). Identify top 3 hotspots. Fix one at a time, re-measure after each. /verify regression.` |
 | Refactor | `/refactor-clean [scope]. /code-review. /verify.` |
 | Research | `Use external-context skill for [topic]. /plan based on findings.` |
-| Research-then-Build | `Use external-context to study [reference X]. Produce comparison report. Then use conductor skill to track delivery: spec → plan → /tdd per phase.` |
-| Testing | `/tdd [module]. /e2e for critical flows. /test-coverage.` |
+| Research-then-Build | `Use external-context to study [reference X]. Produce comparison report. Then use conductor skill to track delivery: spec → plan → /test-driven-development per phase.` |
+| Testing | `/test-driven-development [module]. /e2e for critical flows. /test-coverage.` |
 | Review | `/code-review. Then use security-reviewer agent.` |
 | Docs | `/update-docs. /update-codemaps.` |
 | EPIC | `Use conductor skill (or blueprint) for "[objective]". Execute phases with /verify gates.` |
@@ -622,7 +773,7 @@ A compact version for experienced ECC users. Vary by intent type:
 
 工作流：
 1. /plan 先规划组件结构和认证流程，参考现有页面的模式
-2. /tdd 测试先行：编写登录表单的单元测试和认证流程的集成测试
+2. /test-driven-development 测试先行：编写登录表单的单元测试和认证流程的集成测试
 3. 实现登录页面和认证逻辑
 4. /code-review 审查实现
 5. /verify 验证所有测试通过且页面正常渲染
@@ -670,7 +821,7 @@ Requirements:
 
 Workflow:
 1. /plan the endpoint structure, middleware chain, and validation logic
-2. /tdd — write table-driven tests for success, validation failure, auth failure, not-found
+2. /test-driven-development — write table-driven tests for success, validation failure, auth failure, not-found
 3. Implement following existing handler patterns
 4. /go-review
 5. /verify — run full test suite, confirm no regressions
@@ -722,7 +873,7 @@ Do not:
    - H3: 分享接口幂等性设计阻止了重复请求
    - H4: 前端短路 — 检测到"已分享"就不再触发请求
    对每个假设：阅读 src/share/ 相关代码 + 添加临时日志验证
-2. /tdd 写 e2e 测试用例：分享 → 修改 → 再分享，断言链接或内容变化
+2. /test-driven-development 写 e2e 测试用例：分享 → 修改 → 再分享，断言链接或内容变化
 3. 修复到 green
 4. /verify：跑 e2e 测试 + macOS + Windows 各手测一次（Tauri 项目跨平台）
 5. /code-review
@@ -736,7 +887,7 @@ Do not:
 **Optimized Prompt (Quick):**
 ```
 Use systematic-debugging for "分享 HTML/MD 后修改文件链接不更新" — list 3 hypotheses
-(cache key, hash strategy, idempotent API), verify each. /tdd write failing e2e.
+(cache key, hash strategy, idempotent API), verify each. /test-driven-development write failing e2e.
 Fix to green. /verify on macOS + Windows.
 ```
 
@@ -771,6 +922,98 @@ Use git worktrees for parallel service extraction when dependencies allow.
 
 Recommended: Opus 4.6 for blueprint planning, Sonnet 4.6 for phase execution.
 ```
+
+### Example 5: Phase 0.7 — Project-Aware Recommendation (SwiftUI repo)
+
+Demonstrates the v1.3.0 probe + 3-section Context Block + safe "starting
+points to verify" output. Note how the optimized prompt avoids referencing
+`AuthService` as if it exists (R2) and labels the branch signal as inference
+only (R3).
+
+**User input (vague Chinese):**
+```
+帮我加个登录功能
+```
+
+**Phase 0.7 probe output (5 tool calls):**
+- Action 1: `git rev-parse --is-inside-work-tree` → `true`
+- Action 2: `Glob` finds `Package.swift` at repo root
+- Action 3: `Read Package.swift` lines 1-50 → `swift-tools-version: 6.0`, platform `iOS .v18`
+- Action 4: `git` combined → branch `feat/auth` (2 ahead of `main`), uncommitted `M Sources/Auth/LoginView.swift`, recent commits include `a1b2c3 add AuthService stub`, `d4e5f6 wire keychain`
+- Action 5: `CLAUDE.md` exists, line 1 reads "# AcmeApp iOS companion (SwiftUI)"
+
+**Optimized Prompt (Full):**
+
+````
+## 🔍 Project Context (probed 2026-05-27 14:30 — starting point, NOT ground truth)
+
+### Facts (directly observed in probe)
+- Stack: Swift 6.0 + SwiftUI, target iOS 18  ← from `Package.swift:5` (declared, installed toolchain not verified)
+- Repo: AcmeApp @ branch `feat/auth` (2 commits ahead of `main`)
+- Uncommitted: M `Sources/Auth/LoginView.swift`
+- Recent commit subjects (commit messages only — NOT code verification):
+  - `a1b2c3` "add AuthService stub"
+  - `d4e5f6` "wire keychain"
+  - `9f8e7d` "scaffold Auth module"
+- Recent diff scope (`git diff --stat HEAD~1`): `Sources/Auth/LoginView.swift`: +45 -12
+- Project self-description (`CLAUDE.md:1`, last modified 2026-04-30): "AcmeApp iOS companion (SwiftUI)"
+
+### Inferences (UNVERIFIED — confirm before acting)
+- Likely SwiftUI auth feature work in progress (branch name + recent commit subjects)
+- A type named "AuthService" may exist (commit subject reference) — NOT verified by reading any file
+
+### Unknown / Not Probed
+- Whether `AuthService` actually exists as a Swift type — `Grep "AuthService" Sources/` before referencing
+- Installed Swift toolchain version (only `Package.swift` declared version was read)
+- Whether `LoginView.swift` is the intended host for login UI or just a scratch file
+
+⚠️ Re-verify before mutating: run `git status`, `Read` actual files. This block
+   is probe-time context, not authoritative. If observation contradicts this
+   block, trust observation and ignore this block.
+
+---
+
+**Task**: Implement login functionality for AcmeApp.
+
+**Required skills**: `swiftui-pro` (review/idiom), `test-driven-development` (write failing test first).
+
+**Starting points to verify (NOT commands to obey blindly):**
+
+1. `Sources/Auth/LoginView.swift` already has uncommitted changes (+45 -12 vs HEAD~1). **Read it first** to see what's already drafted before adding new code.
+2. Commit log mentions "AuthService stub" — **before** importing or extending it, run `Grep "AuthService" Sources/` to confirm the type exists and is at a usable state. Treat the name as a lead, not a fact.
+3. Branch is `feat/auth` with 2 commits ahead of `main` — verify this is the intended working branch. If unclear, ask the user.
+4. `CLAUDE.md` declares SwiftUI iOS — use SwiftUI APIs (`@State`, `@Observable`, `NavigationStack`) and `iOS 18` features. Confirm by reading `Package.swift` platforms array before using iOS-26-only APIs.
+
+**Workflow:**
+1. `Read Sources/Auth/LoginView.swift` → understand existing scaffold.
+2. `Grep` for `AuthService`, `Keychain` patterns → ground the implementation in what exists.
+3. Use `test-driven-development`: write failing test for the login happy path first.
+4. Implement minimum code to pass; let `swiftui-pro` review the View structure.
+5. `/verify` — build, run tests, manually exercise the simulator flow.
+
+**Acceptance criteria:**
+- Login screen accepts email + password input, validates non-empty
+- Successful auth navigates to main app screen
+- Failed auth shows inline error
+- Credentials persist via Keychain (extend existing wiring from `d4e5f6`, do NOT re-implement)
+- Unit tests cover validation + success + failure paths
+
+**Scope boundaries:**
+- Do NOT redesign `AuthService` interface — extend it if it exists; flag for user if it doesn't
+- Do NOT switch branch — work continues on `feat/auth`
+- Do NOT introduce a new auth library (no Firebase / Auth0 / etc.) without asking
+````
+
+**Why this output is safer than the v1.2.x style:**
+
+| v1.2.x risk | v1.3.0 mitigation |
+|-------------|-------------------|
+| Would have said "Use `swiftui-pro` to add login" without naming files | Cites `LoginView.swift`, `Package.swift:5`, branch `feat/auth`, commit `d4e5f6` (R1, ≥ 2 Facts cited) |
+| Might have written "extend `AuthService`" as imperative | Downgraded to "Grep `AuthService` first — treat the name as a lead, not a fact" (R2) |
+| Would have inferred "auth feature" from branch name | Branch name in `Inferences`, intent confirmed via user prompt only (R3) |
+| Would have said "Swift 6.0" as if it were installed | "declared, installed toolchain not verified" (R4) |
+| Would have implied CLAUDE.md content was current truth | Cited with last-modified date (R5) |
+| No instruction to re-verify | `⚠️ Re-verify before mutating` footer (R6) |
 
 ---
 
