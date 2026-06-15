@@ -110,6 +110,21 @@ function getDefaultConfig() {
         appliedProfile: 'claude-runtime',
         profiles: DEFAULT_INSTALL_PROFILES,
       },
+      impeccable: {
+        remote: 'https://github.com/pbakaus/impeccable.git',
+        ref: 'main',
+        priority: 5,
+        artifacts: ['skills', 'agents'],
+        // Skill + companion agent live under the repo's .claude/ tree, not at
+        // top-level skills/ — map artifact types to their real subdirs.
+        mapping: {
+          skills: '.claude/skills',
+          agents: '.claude/agents',
+        },
+        kind: 'content-repo',
+        harnesses: ['claude'],
+        profiles: DEFAULT_INSTALL_PROFILES,
+      },
       'anthropic-skills': {
         remote: 'https://github.com/anthropics/skills.git',
         ref: 'main',

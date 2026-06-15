@@ -20,6 +20,11 @@
       "commit": "bc8e12bb80c904a5a9864797ef1fd1212aa82f3d",
       "ref": "main",
       "lockedAt": "2026-06-05T08:06:28.114Z"
+    },
+    "impeccable": {
+      "commit": "fff712ca98e168949efcf142e7360997d6323d6c",
+      "ref": "main",
+      "lockedAt": "2026-06-15T00:00:00.000Z"
     }
   }
 }

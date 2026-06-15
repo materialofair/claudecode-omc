@@ -79,7 +79,8 @@ All skills include comprehensive reference materials and follow ECC standards fo
 | oh-my-claudecode | 2 | yes | Multi-agent orchestration framework |
 | superpowers | 3 | yes | Engineering process guardrails (TDD, debugging, etc.) |
 | ecc | 4 | yes | [everything-claude-code](https://github.com/affaan-m/everything-claude-code) distribution; ships a curated subset via `.omc-curation/ecc-selection.json` (not all 251 skills) |
-| your own | 5+ | opt-in | Distribution-style repos added via `source add --kind distribution-repo` |
+| impeccable | 5 | yes | [impeccable](https://github.com/pbakaus/impeccable) design skill (frontend UI design/critique/polish with 23 commands) plus its companion agent |
+| your own | 6+ | opt-in | Distribution-style repos added via `source add --kind distribution-repo` |
 
 ### Governance manifest
 
