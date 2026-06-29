@@ -6,3 +6,4 @@ node_modules/
 .claude/
 *.tgz
 bundled/
+.claude_memory/
