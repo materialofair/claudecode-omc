@@ -58,7 +58,7 @@ color/shape block).
     "logical_size": [393, 852],
     "render_scale": 3,
     "browser": "chromium-1180",
-    "model_id": "claude-sonnet-4-6",
+    "model_id": "glm-5.2",
     "temperature": 0
   },
   "transform": {

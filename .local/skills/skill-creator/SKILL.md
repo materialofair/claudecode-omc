@@ -149,7 +149,7 @@ user-invocable: true
 allowed-tools:
   - Read
   - Grep
-model: sonnet
+model: glm-5.2
 ---
 ```
 

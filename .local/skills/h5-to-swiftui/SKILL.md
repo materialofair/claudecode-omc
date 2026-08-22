@@ -26,7 +26,7 @@ allowed-tools:
   - Write
   - Edit
   - Agent
-model: sonnet
+model: glm-5.2
 ---
 
 # H5 → Native SwiftUI (perceptually-convergent, residual-quantified)

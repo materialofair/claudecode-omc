@@ -160,7 +160,7 @@ Arguments:
   --gen <path>             Explicit path to SwiftUI simulator render PNG
   --sim-runtime <runtime>  Simulator runtime string to pin in output (e.g. "iOS 17.5")
   --browser <id>           Browser build string to pin (e.g. "chromium-1180")
-  --model-id <id>          Model identifier to pin (e.g. "claude-sonnet-4-6")
+  --model-id <id>          Model identifier to pin (e.g. "glm-5.2")
 
 Input resolution (precedence):
   1. --ref / --gen flags if provided

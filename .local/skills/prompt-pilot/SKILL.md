@@ -26,7 +26,7 @@ metadata:
             clarifying-questions loop (no infinite re-dispatch); tightened the
             over-broad "When to Use" line so a bare vague task can't trigger it;
             read-only subagent is now tool-enforced (prefer analyst/Explore, not
-            general-purpose) and sonnet-class for cost; variants must match the
+            general-purpose) and glm-5.2 for cost; variants must match the
             raw prompt's language; "Other" disambiguates custom-prompt vs
             reject/re-optimize; added explicit non-trigger examples.
     1.1.0 — Hardened the optimize→execute loop after an adversarial review:
@@ -41,7 +41,7 @@ metadata:
 argument-hint: <your rough prompt / task idea>
 user-invocable: true
 disable-model-invocation: false
-model: opus
+model: glm-5.2
 ---
 
 # Prompt Pilot
@@ -85,8 +85,8 @@ trigger with no task, ask once: "What do you want to get done?" Then proceed.
 Dispatch a **read-only** subagent with the instruction block below — prefer one
 with no Write/Edit access (`analyst`, or `Explore`/`explore`) so the read-only
 rule is tool-enforced, not just prompt-level. Avoid `general-purpose` here: it
-can mutate files. A sonnet-class model is plenty for this optimization pass —
-reserve opus for the actual execution in Step 4. The subagent runs a compressed
+can mutate files. GLM-5.2 is plenty for this optimization pass —
+and for the actual execution in Step 4. The subagent runs a compressed
 version of the prompt-optimizer methodology (intent + gap analysis, light
 project probe, ECC component match) but its deliverable is **3 concise
 variants**, NOT a giant essay.

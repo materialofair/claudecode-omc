@@ -604,10 +604,10 @@ For MEDIUM+ tasks, always start with /plan. For EPIC tasks, use blueprint skill.
 
 | Scope | Recommended Model | Rationale |
 |-------|------------------|-----------|
-| TRIVIAL-LOW | Sonnet 4.6 | Fast, cost-efficient for simple tasks |
-| MEDIUM | Sonnet 4.6 | Best coding model for standard work |
-| HIGH | Sonnet 4.6 (main) + Opus 4.6 (planning) | Opus for architecture, Sonnet for implementation |
-| EPIC | Opus 4.6 (blueprint) + Sonnet 4.6 (execution) | Deep reasoning for multi-session planning |
+| TRIVIAL-LOW | GLM-5.2 | Fast, cost-efficient for simple tasks |
+| MEDIUM | GLM-5.2 | Best coding model for standard work |
+| HIGH | GLM-5.2 | Planning and implementation on the same model |
+| EPIC | GLM-5.2 | Deep reasoning for multi-session planning |
 
 **Multi-prompt splitting** (for HIGH/EPIC scope):
 
@@ -663,7 +663,7 @@ If Phase 0 auto-detected the answer, state it instead of asking.
 | Command | /plan | Plan architecture before coding |
 | Skill | tdd-workflow | TDD methodology guidance |
 | Agent | code-reviewer | Post-implementation review |
-| Model | Sonnet 4.6 | Recommended for this scope |
+| Model | GLM-5.2 | Recommended for this scope |
 
 ### Section 3: Optimized Prompt — Full Version
 
@@ -920,7 +920,7 @@ Each phase = 1 PR, with /verify gates between phases.
 Use /save-session between phases. Use /resume-session to continue.
 Use git worktrees for parallel service extraction when dependencies allow.
 
-Recommended: Opus 4.6 for blueprint planning, Sonnet 4.6 for phase execution.
+Recommended: GLM-5.2 for blueprint planning and phase execution.
 ```
 
 ### Example 5: Phase 0.7 — Project-Aware Recommendation (SwiftUI repo)

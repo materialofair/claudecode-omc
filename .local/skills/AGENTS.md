@@ -107,7 +107,7 @@ disable-model-invocation: false  # Optional Claude Code field
 user-invocable: true             # Optional Claude Code field
 allowed-tools:                   # Optional Claude Code field
   - Read
-model: sonnet                    # Optional Claude Code field
+model: glm-5.2                   # Optional Claude Code field
 ---
 
 # Skill Name

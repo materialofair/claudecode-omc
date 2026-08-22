@@ -11,7 +11,7 @@ allowed-tools:
   - Edit
   - Write
   - AskUserQuestion
-model: sonnet
+model: glm-5.2
 ---
 
 # Conductor Distill

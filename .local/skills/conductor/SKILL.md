@@ -201,19 +201,19 @@ Conductor workflow operations (can be executed by skill protocol even if no dedi
    - Output compact brief: goal, accepted constraints, current phase, next task, blockers.
 
 4. **Spec Generation** (phase: `spec`)
-   - Delegate to `analyst` (sonnet/opus) for requirements structure.
-   - Delegate to `architect` (opus) for system boundaries, risks, and acceptance criteria.
+   - Delegate to `analyst` for requirements structure.
+   - Delegate to `architect` for system boundaries, risks, and acceptance criteria.
    - Persist to `tracks/<slug>/spec.md`.
    - **Gate: present spec to user for approval via `AskUserQuestion` before proceeding.**
    - Update `metadata.json` status to `planned` only after approval.
 
 5. **Plan Generation** (phase: `planning`)
-   - Delegate to `planner` (sonnet/opus) for phased tasks.
+   - Delegate to `planner` for phased tasks.
    - Plan must follow the phased task format (see Plan Format below).
    - Require testable acceptance criteria and explicit verification commands.
    - Persist to `tracks/<slug>/plan.md`.
    - **Gate: present plan to user for approval via `AskUserQuestion` before proceeding.**
-   - Optionally delegate to `critic` (opus) for plan review before user approval.
+   - Optionally delegate to `critic` for plan review before user approval.
 
 6. **Implement** (phase: `implementing`)
    - Execute tasks sequentially per plan phase via `executor`.
@@ -320,13 +320,13 @@ Quality gates:
 </Research_Evidence_Format>
 
 <Agent_Routing>
-- Setup/context scan: `explore` (haiku/sonnet)
-- Requirements/spec: `analyst` + `architect` (sonnet/opus)
-- Plan refinement: `planner` + `critic` (sonnet/opus)
-- Implementation: `executor` (sonnet by default; use `model=opus` for complex tasks)
-- Test strategy/fixes: `test-engineer` (sonnet)
+- Setup/context scan: `explore`
+- Requirements/spec: `analyst` + `architect`
+- Plan refinement: `planner` + `critic`
+- Implementation: `executor`
+- Test strategy/fixes: `test-engineer`
 - Review/validation: `code-reviewer` + `verifier` (+ `security-reviewer` when needed)
-- Research branches: `scientist` (haiku/sonnet/opus by tier)
+- Research branches: `scientist`
 </Agent_Routing>
 
 <Status_Contract>

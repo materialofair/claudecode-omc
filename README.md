@@ -98,7 +98,7 @@ one place:
       "allowlist": { "skills": ["…"], "agents": ["…"] },
       "patches": {
         "agents/swift-reviewer": {
-          "frontmatter": { "model": "opus" },
+          "frontmatter": { "model": "glm-5.2" },
           "replace": [{ "find": "MUST BE USED for Swift", "with": "Use for Swift" }],
           "append": "\n## Project note\nFollow our SwiftLint config.\n"
         }
