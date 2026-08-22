@@ -1,0 +1,34 @@
+{
+  "name": "opencode-omc",
+  "version": "6.0.0",
+  "description": "OpenCode harness with curated skills, agents, commands, and GLM defaults",
+  "bin": {
+    "opencode-omc": "bin/opencode-omc.js"
+  },
+  "files": ["bin", "scripts", "README.md"],
+  "scripts": {
+    "postinstall": "node scripts/post-install-message.js",
+    "prepublishOnly": "node ../../scripts/assert-release-ready.js --require-core"
+  },
+  "dependencies": {
+    "@ah-wq/omc-core": "6.0.0"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": ["opencode", "glm", "zhipuai", "skills", "agents", "harness"],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/materialofair/claudecode-omc.git",
+    "directory": "packages/opencode-omc"
+  },
+  "homepage": "https://github.com/materialofair/claudecode-omc#opencode-harness",
+  "bugs": {
+    "url": "https://github.com/materialofair/claudecode-omc/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
+}

@@ -3,7 +3,7 @@ const fs = require('fs');
 const fsp = require('fs/promises');
 const path = require('path');
 const os = require('os');
-const { getProjectRoot } = require('../config/paths');
+const { getScopedInstallTarget } = require('../config/paths');
 
 const INDEX_FILENAME = '_index.md';
 const MAX_DESCRIPTION_CHARS = 280;
@@ -160,13 +160,8 @@ async function buildAndWriteIndex(skillsDir, { quiet = false } = {}) {
 /**
  * Resolve the skills install directory for the given scope.
  */
-function resolveSkillsDir(scope) {
-  if (scope === 'project') {
-    const root = getProjectRoot();
-    return path.join(root, '.claude', 'skills');
-  }
-  // default: user scope
-  return path.join(os.homedir(), '.claude', 'skills');
+function resolveSkillsDir(scope, harness = 'claude', cwd = process.cwd()) {
+  return getScopedInstallTarget('skills', scope, cwd, harness);
 }
 
 /**
@@ -174,23 +169,26 @@ function resolveSkillsDir(scope) {
  */
 async function indexCommand(args, flags = {}) {
   const scope = flags.scope || 'user';
+  const harness = flags.harness || 'claude';
+  const programName = flags.runtime?.programName || 'omc-manage';
   if (scope !== 'user' && scope !== 'project') {
     console.error(`Error: invalid --scope "${scope}" (expected user or project)`);
     process.exitCode = 1;
     return;
   }
 
-  const skillsDir = resolveSkillsDir(scope);
+  const skillsDir = resolveSkillsDir(scope, harness);
   if (!fs.existsSync(skillsDir)) {
     console.error(`Error: skills directory not found: ${skillsDir}`);
-    console.error('Run `omc-manage setup` first to install skills.');
+    console.error(`Run \`${programName} setup\` first to install skills.`);
     process.exitCode = 1;
     return;
   }
 
-  console.log(`omc-manage skill index`);
-  console.log(`======================`);
+  console.log(`${programName} skill index`);
+  console.log('='.repeat(programName.length + 12));
   console.log(`Scope: ${scope}`);
+  console.log(`Harness: ${harness}`);
   console.log(`Target: ${skillsDir.replace(os.homedir(), '~')}`);
   console.log('');
 

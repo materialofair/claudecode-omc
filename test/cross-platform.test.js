@@ -9,7 +9,8 @@ const { parseAgentMetadata } = require('../src/merge/agent-merger');
 const { parseSkillMetadata, loadSkillsFromSource } = require('../src/merge/skill-merger');
 const { parseFrontmatter: parseIndexFrontmatter } = require('../src/cli/skill-index');
 const { evaluateSkillQuality } = require('../src/utils/quality');
-const { commandAvailable } = require('../src/cli/doctor');
+const { commandAvailable, getHarnessCommand } = require('../src/cli/doctor');
+const { resolveSkillsDir } = require('../src/cli/skill-index');
 const { bundleUpstream } = require('../scripts/bundle-upstream');
 
 test('skill, agent, index, and quality parsers accept CRLF frontmatter', async () => {
@@ -50,6 +51,20 @@ test('doctor uses where.exe on Windows and which elsewhere', () => {
     ['where.exe', ['claude']],
     ['which', ['claude']],
   ]);
+});
+
+test('doctor selects the executable for the effective harness', () => {
+  assert.equal(getHarnessCommand('claude'), 'claude');
+  assert.equal(getHarnessCommand('opencode'), 'opencode');
+  assert.throws(() => getHarnessCommand('opencdoe'), /Invalid harness/);
+});
+
+test('skill index resolves harness-specific user and project directories', () => {
+  const project = path.join(os.tmpdir(), 'omc-index-project');
+
+  assert.equal(resolveSkillsDir('project', 'claude', project), path.join(project, '.claude', 'skills'));
+  assert.equal(resolveSkillsDir('project', 'opencode', project), path.join(project, '.opencode', 'skills'));
+  assert.equal(resolveSkillsDir('user', 'opencode', project), path.join(os.homedir(), '.config', 'opencode', 'skills'));
 });
 
 test('Node bundler copies sources and writes a manifest without shell tools', async () => {

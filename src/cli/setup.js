@@ -36,7 +36,8 @@ const LEGACY_HOOK_PATHS = [
   'lib',
 ];
 
-function getPackageVersion(root) {
+function getPackageVersion(root, runtime = {}) {
+  if (runtime.packageVersion) return runtime.packageVersion;
   try {
     const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
     return pkg.version || '0.0.0';
@@ -45,10 +46,10 @@ function getPackageVersion(root) {
   }
 }
 
-async function writeInstallMetadata(root) {
+async function writeInstallMetadata(root, runtime) {
   const now = new Date().toISOString();
   const metadata = {
-    version: getPackageVersion(root),
+    version: getPackageVersion(root, runtime),
     installedAt: now,
     installMethod: fs.existsSync(path.join(root, '.git')) ? 'local-dev' : 'npm',
     lastCheckAt: now,
@@ -164,16 +165,16 @@ async function pruneManagedPaths(installTarget, previousPaths, desiredPaths, fla
   return toRemove.length;
 }
 
-async function writeOmcConfig(root, scope) {
+async function writeOmcConfig(root, scope, runtime = {}) {
   if (scope !== 'user') return;
 
   const now = new Date().toISOString();
-  const version = getPackageVersion(root);
+  const version = getPackageVersion(root, runtime);
   const existing = await readJsonFile(OMC_CONFIG_PATH, {});
   const next = {
     ...existing,
     configuredAt: existing.configuredAt || now,
-    updateRepository: 'materialofair/claudecode-omc',
+    updateRepository: runtime.updateRepository || 'materialofair/claudecode-omc',
     updateBranch: 'main',
     setupCompleted: now,
     setupVersion: version,
@@ -500,8 +501,9 @@ async function setup(args, flags = {}) {
     ? [...new Set(flags.type.split(',').map(type => (type === 'claude-md' ? 'guidelines' : type)))]
     : null;
 
-  console.log('claudecode-omc setup');
-  console.log('====================');
+  const productName = flags.runtime?.productName || 'claudecode-omc';
+  console.log(`${productName} setup`);
+  console.log('='.repeat(productName.length + 6));
   console.log(`Scope: ${scope}`);
   console.log(`Harness: ${harness}`);
   if (typeFilter) console.log(`Types: ${typeFilter.join(', ')}`);
@@ -527,6 +529,7 @@ async function setup(args, flags = {}) {
   const nextManifest = {
     updatedAt: new Date().toISOString(),
     scope,
+    harness,
     artifacts: {},
   };
   let step = 0;
@@ -638,8 +641,8 @@ async function setup(args, flags = {}) {
     await fsp.mkdir(path.dirname(manifestPath), { recursive: true });
     await fsp.writeFile(manifestPath, JSON.stringify(nextManifest, null, 2) + '\n', 'utf8');
     if (scope === 'user' && harness === 'claude') {
-      await writeInstallMetadata(root);
-      await writeOmcConfig(root, scope);
+      await writeInstallMetadata(root, flags.runtime);
+      await writeOmcConfig(root, scope, flags.runtime);
     }
   }
 

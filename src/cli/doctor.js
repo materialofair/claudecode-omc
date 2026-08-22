@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { readConfig } = require('../config/sources');
-const { getProjectRoot, getSourceArtifactDir, getInstallTarget } = require('../config/paths');
+const { getProjectRoot, getSourceArtifactDir, getScopedInstallTarget } = require('../config/paths');
 const { ARTIFACT_TYPES, getArtifactTypeNames } = require('../config/artifact-types');
 
 function commandAvailable(command, options = {}) {
@@ -12,6 +12,12 @@ function commandAvailable(command, options = {}) {
   const locator = platform === 'win32' ? 'where.exe' : 'which';
   const result = spawn(locator, [command], { encoding: 'utf8' });
   return !result.error && result.status === 0;
+}
+
+function getHarnessCommand(harness) {
+  if (harness === 'claude') return 'claude';
+  if (harness === 'opencode') return 'opencode';
+  throw new Error(`Invalid harness "${harness}" (expected claude or opencode)`);
 }
 
 function check(label, fn) {
@@ -29,9 +35,12 @@ function check(label, fn) {
   }
 }
 
-async function doctor() {
-  console.log('claudecode-omc doctor');
-  console.log('=====================');
+async function doctor(args, flags = {}) {
+  const harness = flags.harness || 'claude';
+  const runtime = flags.runtime || { productName: 'claudecode-omc', programName: 'omc-manage' };
+  const harnessCommand = getHarnessCommand(harness);
+  console.log(`${runtime.productName} doctor`);
+  console.log('='.repeat(runtime.productName.length + 7));
   console.log('');
 
   let allOk = true;
@@ -47,8 +56,8 @@ async function doctor() {
     return result.status === 0 ? true : 'git not found';
   }) && allOk;
 
-  allOk = check('claude CLI available', () => {
-    return commandAvailable('claude') ? true : 'claude not found in PATH';
+  allOk = check(`${harnessCommand} CLI available`, () => {
+    return commandAvailable(harnessCommand) ? true : `${harnessCommand} not found in PATH`;
   }) && allOk;
 
   console.log('');
@@ -74,7 +83,7 @@ async function doctor() {
     if (isPlanned && !isReference) {
       // Distribution-repo waiting for plan apply: surface it without claiming
       // failure — sync may have already populated catalog manifests.
-      console.log(`  ○ ${name} (${tagBits.join(', ')}) — staged, run "omc-manage plan apply ${name}" to activate`);
+      console.log(`  ○ ${name} (${tagBits.join(', ')}) — staged, run "${runtime.programName} plan apply ${name}" to activate`);
       if (available.length > 0) {
         console.log(`    synced types: ${available.join(', ')}`);
       }
@@ -106,7 +115,8 @@ async function doctor() {
 
   for (const typeName of typeNames) {
     const type = ARTIFACT_TYPES[typeName];
-    const target = type.installTarget;
+    const target = getScopedInstallTarget(typeName, 'user', process.cwd(), harness);
+    if (!target) continue;
     if (fs.existsSync(target)) {
       if (fs.statSync(target).isDirectory()) {
         const count = fs.readdirSync(target).length;
@@ -125,15 +135,17 @@ async function doctor() {
     const age = Date.now() - new Date(config.lastSync).getTime();
     const days = Math.floor(age / (1000 * 60 * 60 * 24));
     if (days > 7) {
-      console.log(`⚠ Last sync was ${days} days ago. Consider: omc-manage source sync`);
+      console.log(`⚠ Last sync was ${days} days ago. Consider: ${runtime.programName} source sync`);
     } else {
       console.log(`Last sync: ${config.lastSync}`);
     }
   } else {
-    console.log('⚠ Never synced. Run: omc-manage source sync');
+    console.log(`⚠ Never synced. Run: ${runtime.programName} source sync`);
   }
 
   console.log('');
+  if (!allOk) process.exitCode = 1;
+  return allOk;
 }
 
-module.exports = { doctor, commandAvailable };
+module.exports = { doctor, commandAvailable, getHarnessCommand };

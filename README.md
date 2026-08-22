@@ -1,15 +1,36 @@
-# claudecode-omc
+# OMC harness distributions
 
-Claude Code harness — curated best-practice configurations from multiple sources.
+Curated best-practice configurations for Claude Code and OpenCode, maintained in one repository and published as harness-specific npm packages.
 
 Merges skills, agents, hooks, and commands from [oh-my-claudecode](https://github.com/Yeachan-Heo/oh-my-claudecode) and [superpowers](https://github.com/obra/superpowers) with your own local customizations, using priority-based conflict resolution.
 
 ## Install
 
+| Harness | Package | Command | Default target |
+|---|---|---|---|
+| Claude Code | `claudecode-omc` | `omc-manage` | `~/.claude/` |
+| OpenCode | `opencode-omc` | `opencode-omc` | `~/.config/opencode/` |
+
 ```bash
+# Claude Code
 npm install -g claudecode-omc
 omc-manage setup
+
+# OpenCode
+npm install -g opencode-omc
+opencode-omc setup
 ```
+
+Both facade packages depend on the same published `@ah-wq/omc-core` runtime, so the curated artifact bundle is maintained and published in one place rather than copied into both facade tarballs.
+
+### Maintainer release
+
+```bash
+npm run release:verify
+npm run release:publish -- --confirm-publish
+```
+
+The verification step performs a frozen source sync, rebuilds the bundle, runs the complete distribution test suite, and records a content fingerprint. The publish command requires a clean worktree and the explicit confirmation flag, then publishes and verifies `@ah-wq/omc-core` before the OpenCode and Claude facade packages. Package-level lifecycle gates reject stale verification state and prevent either facade from publishing before its exact core version is available on npm.
 
 ## What Gets Installed
 
@@ -23,7 +44,7 @@ Defaults (only the bundled sources, no extras):
 | Commands | ~3 | superpowers |
 | Guidelines | 1 | local coding discipline prompt guidelines |
 
-All artifacts are installed to `~/.claude/` where Claude Code discovers them automatically.
+Artifacts are installed to `~/.claude/` for Claude Code or `~/.config/opencode/` for OpenCode.
 Adding a curated subset of [everything-claude-code](https://github.com/affaan-m/everything-claude-code)
 on top can take totals to ~102 skills / ~35 agents / ~26 commands — see
 [Distribution-Repo Sources](#distribution-repo-sources) below.
@@ -52,6 +73,8 @@ The latest release includes 8 specialized iOS/SwiftUI skills from MIT-licensed s
 All skills include comprehensive reference materials and follow ECC standards for seamless integration.
 
 ## Commands
+
+The examples below use `omc-manage`; OpenCode users can substitute `opencode-omc` and omit `--harness opencode`.
 
 | Command | Description |
 |---------|-------------|
@@ -270,14 +293,15 @@ omc-manage setup --force   # Reinstall with updated artifacts
 
 ## OpenCode harness
 
-`omc-manage setup` can install the same curated artifacts for
-[OpenCode](https://opencode.ai) instead of Claude Code by passing
-`--harness opencode`:
+The `opencode-omc` package installs the same curated artifacts for
+[OpenCode](https://opencode.ai) and selects the OpenCode harness by default:
 
 ```bash
-omc-manage setup --harness opencode                # user scope (~/.config/opencode)
-omc-manage setup --harness opencode --scope project # project scope (.opencode/, opencode.json)
+opencode-omc setup                 # user scope (~/.config/opencode)
+opencode-omc setup --scope project # project scope (.opencode/, opencode.json)
 ```
+
+The legacy `omc-manage setup --harness opencode` form remains supported.
 
 Mapping at install time:
 
@@ -300,7 +324,7 @@ catalog. Connect the matching provider in OpenCode, or set `ZHIPU_API_KEY`:
 
 ```bash
 export ZHIPU_API_KEY=...              # https://open.bigmodel.cn
-omc-manage setup --harness opencode   # then run `opencode` and pick a GLM model
+opencode-omc setup                    # then run `opencode` and pick a GLM model
 ```
 
 On Windows PowerShell, use `$env:ZHIPU_API_KEY = "..."`; OpenCode's user

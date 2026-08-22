@@ -8,4 +8,9 @@ __pycache__/
 .claude/
 *.tgz
 bundled/
+packages/omc-core/src/
+packages/omc-core/.local/
+packages/omc-core/.omc-curation/
+packages/omc-core/bundled/
+packages/omc-core/templates/
 .claude_memory/

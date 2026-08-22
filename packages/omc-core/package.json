@@ -1,0 +1,38 @@
+{
+  "name": "@ah-wq/omc-core",
+  "version": "6.0.0",
+  "description": "Shared runtime and curated artifacts for claudecode-omc and opencode-omc",
+  "main": "runtime.js",
+  "exports": {
+    ".": "./runtime.js",
+    "./cli": "./runtime.js"
+  },
+  "files": [
+    "runtime.js",
+    "src",
+    ".local",
+    ".omc-curation",
+    "bundled",
+    "templates",
+    "README.md"
+  ],
+  "scripts": {
+    "prepublishOnly": "node ../../scripts/assert-release-ready.js",
+    "prepack": "node ../../scripts/prepare-core-package.js",
+    "postpack": "node ../../scripts/prepare-core-package.js --clean"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": ["claude-code", "opencode", "skills", "agents", "harness"],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/materialofair/claudecode-omc.git",
+    "directory": "packages/omc-core"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
+}

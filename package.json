@@ -1,19 +1,10 @@
 {
-  "name": "claudecode-omc",
-  "version": "5.14.0",
-  "description": "Claude Code harness — best-practice skills, agents, hooks, and configs from multiple sources",
-  "bin": {
-    "omc-manage": "bin/omc-manage.js"
-  },
-  "files": [
-    "bin",
-    "src",
-    ".local",
-    ".omc-curation",
-    "bundled",
-    "scripts",
-    "templates",
-    "README.md"
+  "name": "claudecode-omc-monorepo",
+  "version": "6.0.0",
+  "private": true,
+  "description": "Workspace for the Claude Code and OpenCode OMC distributions",
+  "workspaces": [
+    "packages/*"
   ],
   "scripts": {
     "test": "node --test",
@@ -29,24 +20,17 @@
     "skill:list": "node bin/omc-manage.js skill list",
     "skill:conflicts": "node bin/omc-manage.js skill conflicts",
     "bundle": "node scripts/bundle-upstream.js",
-    "prepublishOnly": "npm test && npm run bundle",
-    "postinstall": "node scripts/post-install-message.js"
+    "prepare:core": "node scripts/prepare-core-package.js",
+    "clean:core": "node scripts/prepare-core-package.js --clean",
+    "pack:core": "npm pack --workspace @ah-wq/omc-core",
+    "pack:claude": "npm pack --workspace claudecode-omc",
+    "pack:opencode": "npm pack --workspace opencode-omc",
+    "release:verify": "node scripts/release-workspaces.js verify",
+    "release:publish": "node scripts/release-workspaces.js publish"
   },
   "engines": {
     "node": ">=20"
   },
-  "keywords": [
-    "claude-code",
-    "oh-my-claudecode",
-    "superpowers",
-    "skills",
-    "agents",
-    "hooks",
-    "harness",
-    "multi-source",
-    "ai-agent",
-    "best-practices"
-  ],
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -55,9 +39,5 @@
   "homepage": "https://github.com/materialofair/claudecode-omc#readme",
   "bugs": {
     "url": "https://github.com/materialofair/claudecode-omc/issues"
-  },
-  "publishConfig": {
-    "access": "public",
-    "registry": "https://registry.npmjs.org/"
   }
 }

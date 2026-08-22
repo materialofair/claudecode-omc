@@ -10,10 +10,27 @@ const COMMANDS = {
   guidelines: () => require('./guidelines'),
 };
 
-function showHelp() {
-  console.log('claudecode-omc — Claude Code harness manager');
+const DEFAULT_RUNTIME = Object.freeze({
+  defaultHarness: 'claude',
+  productName: 'claudecode-omc',
+  programName: 'omc-manage',
+  packageVersion: null,
+  updateRepository: 'materialofair/claudecode-omc',
+});
+
+function resolveRuntime(options = {}) {
+  const runtime = Object.freeze({ ...DEFAULT_RUNTIME, ...options });
+  if (runtime.defaultHarness !== 'claude' && runtime.defaultHarness !== 'opencode') {
+    throw new Error(`Invalid default harness "${runtime.defaultHarness}"`);
+  }
+  return runtime;
+}
+
+function showHelp(runtime = DEFAULT_RUNTIME) {
+  const harnessLabel = runtime.defaultHarness === 'opencode' ? 'OpenCode' : 'Claude Code';
+  console.log(`${runtime.productName} — ${harnessLabel} harness manager`);
   console.log('');
-  console.log('Usage: omc-manage <command> [options]');
+  console.log(`Usage: ${runtime.programName} <command> [options]`);
   console.log('');
   console.log('Commands:');
   console.log('  setup     [--scope user|project] [--force] [--dry-run] [--type <type>]');
@@ -40,18 +57,19 @@ function showHelp() {
   console.log('Artifact types: skills, agents, hooks, commands, guidelines, claude-md, settings, hud');
 }
 
-async function main(argv) {
+async function main(argv, runtimeOptions = {}) {
+  const runtime = resolveRuntime(runtimeOptions);
   const command = argv[0];
 
   if (!command || command === 'help' || command === '--help' || command === '-h') {
-    showHelp();
+    showHelp(runtime);
     return;
   }
 
   const loader = COMMANDS[command];
   if (!loader) {
     console.error(`Unknown command: ${command}`);
-    console.error('Run "omc-manage help" for usage.');
+    console.error(`Run "${runtime.programName} help" for usage.`);
     process.exit(1);
   }
 
@@ -115,7 +133,13 @@ async function main(argv) {
     else positional.push(arg);
   }
 
+  if (!flags.harness) flags.harness = runtime.defaultHarness;
+  if (flags.harness !== 'claude' && flags.harness !== 'opencode') {
+    throw new Error(`Invalid harness "${flags.harness}" (expected claude or opencode)`);
+  }
+  flags.runtime = runtime;
+
   await handler(positional, flags);
 }
 
-module.exports = { main };
+module.exports = { DEFAULT_RUNTIME, main, resolveRuntime, showHelp };
