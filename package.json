@@ -1,6 +1,6 @@
 {
   "name": "claudecode-omc",
-  "version": "5.13.0",
+  "version": "5.14.0",
   "description": "Claude Code harness — best-practice skills, agents, hooks, and configs from multiple sources",
   "bin": {
     "omc-manage": "bin/omc-manage.js"
@@ -28,8 +28,8 @@
     "plan:install": "node bin/omc-manage.js plan install",
     "skill:list": "node bin/omc-manage.js skill list",
     "skill:conflicts": "node bin/omc-manage.js skill conflicts",
-    "bundle": "bash scripts/bundle-upstream.sh",
-    "prepublishOnly": "bash scripts/bundle-upstream.sh",
+    "bundle": "node scripts/bundle-upstream.js",
+    "prepublishOnly": "npm test && npm run bundle",
     "postinstall": "node scripts/post-install-message.js"
   },
   "engines": {
@@ -47,5 +47,17 @@
     "ai-agent",
     "best-practices"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/materialofair/claudecode-omc.git"
+  },
+  "homepage": "https://github.com/materialofair/claudecode-omc#readme",
+  "bugs": {
+    "url": "https://github.com/materialofair/claudecode-omc/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
 }

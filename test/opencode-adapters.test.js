@@ -9,6 +9,7 @@ const test = require('node:test');
 const {
   adaptAgentMarkdown,
   adaptCommandMarkdown,
+  adaptSkillMarkdown,
   adaptClaudeSettingsForOpencode,
 } = require('../src/merge/opencode-adapters');
 
@@ -34,6 +35,66 @@ test('agent adapter maps Claude frontmatter to OpenCode (description/mode/permis
   assert.ok(!/name: code-reviewer/.test(out), 'Claude name key should be dropped');
   assert.ok(!/model: opus/.test(out), 'Claude model alias should be dropped');
   assert.match(out, /Body content/);
+});
+
+test('agent adapter preserves a tools allowlist as restrictive OpenCode permissions', () => {
+  const input = [
+    '---',
+    'name: code-explorer',
+    'description: Read-only explorer',
+    'tools:',
+    '  - Read',
+    '  - Grep',
+    '  - Glob',
+    '---',
+    'Explore the repository.',
+  ].join('\r\n');
+
+  const out = adaptAgentMarkdown({ name: 'code-explorer' }, input);
+
+  assert.match(out, /permission:\n  "\*": deny/);
+  assert.match(out, /  read: allow/);
+  assert.match(out, /  grep: allow/);
+  assert.match(out, /  glob: allow/);
+  assert.ok(!/  edit: allow/.test(out));
+  assert.ok(!/  bash: allow/.test(out));
+});
+
+test('agent adapter preserves scoped Bash allowlists without granting all shell commands', () => {
+  const input = [
+    '---',
+    'name: git-reader',
+    'description: Inspect git state',
+    'tools: Read, Bash(git:*)',
+    '---',
+    'Inspect the repository.',
+  ].join('\n');
+
+  const out = adaptAgentMarkdown({ name: 'git-reader' }, input);
+
+  assert.match(out, /  bash:\n    "\*": deny\n    "git \*": allow/);
+  assert.ok(!/  bash: allow/.test(out));
+});
+
+test('skill adapter matches the OpenCode directory name and normalizes common invocations', () => {
+  const input = [
+    '---',
+    'name: omc-plan',
+    'description: Plan work',
+    'argument-hint: "<task>"',
+    '---',
+    'Use Task(subagent_type="oh-my-claudecode:architect", model="opus").',
+    'Then invoke Skill("oh-my-claudecode:verify").',
+    'Read ~/.claude/skills/verify/SKILL.md.',
+  ].join('\n');
+
+  const out = adaptSkillMarkdown({ name: 'plan' }, input);
+
+  assert.match(out, /^---\nname: plan\n/);
+  assert.match(out, /task\(subagent_type="architect"\)/);
+  assert.match(out, /skill\(name="verify"\)/);
+  assert.match(out, /~\/\.config\/opencode\/skills\/verify/);
+  assert.doesNotMatch(out, /^argument-hint:/m);
 });
 
 test('command adapter keeps description and drops Claude-only keys', () => {
@@ -85,7 +146,7 @@ test('opencode setup (project scope) installs to .opencode and adapts artifacts'
   const cliPath = path.resolve(__dirname, '..', 'bin', 'omc-manage.js');
   const result = spawnSync(
     process.execPath,
-    [cliPath, 'setup', '--harness', 'opencode', '--scope', 'project', '--type', 'agents,settings'],
+    [cliPath, 'setup', '--harness', 'opencode', '--scope', 'project', '--type', 'skills,agents,settings'],
     { cwd: project, env: { ...process.env, HOME: home }, encoding: 'utf8' },
   );
 
@@ -102,11 +163,43 @@ test('opencode setup (project scope) installs to .opencode and adapts artifacts'
   const configPath = path.join(project, 'opencode.json');
   assert.equal(fs.existsSync(configPath), true);
   const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-  assert.equal(config.model, 'zhipu/glm-5.2');
-  assert.ok(config.provider.zhipu.models['glm-5.2']);
-  assert.ok(config.provider.zhipu.models['glm-5.3']);
+  assert.equal(config.model, 'zhipuai/glm-5.2');
+  assert.equal(config.$schema, 'https://opencode.ai/config.json');
+  assert.equal(config.provider, undefined);
   assert.equal(config.mcp.gitnexus.type, 'local');
+
+  const skillPath = path.join(project, '.opencode', 'skills', 'plan', 'SKILL.md');
+  assert.equal(fs.existsSync(skillPath), true);
+  assert.match(fs.readFileSync(skillPath, 'utf8'), /^---\nname: plan\n/);
+
+  for (const skillDir of fs.readdirSync(path.join(project, '.opencode', 'skills'))) {
+    const installedSkill = path.join(project, '.opencode', 'skills', skillDir, 'SKILL.md');
+    if (!fs.existsSync(installedSkill)) continue;
+    const content = fs.readFileSync(installedSkill, 'utf8');
+    const installedFrontmatter = content.match(/^---\n([\s\S]*?)\n---/)?.[1] || '';
+    assert.doesNotMatch(content, /\b(?:Task|Agent|Skill)\(/, `${skillDir} has a Claude-only tool call`);
+    assert.doesNotMatch(content, /oh-my-claudecode:/, `${skillDir} has a Claude-only namespace`);
+    assert.doesNotMatch(
+      installedFrontmatter,
+      /^(?:argument-hint|disable-model-invocation|user-invocable|allowed-tools|model|level|pipeline|handoff(?:-policy)?)\s*:/m,
+      `${skillDir} has Claude/OMC-only frontmatter`,
+    );
+  }
 
   // Nothing should have leaked into a Claude home dir.
   assert.equal(fs.existsSync(path.join(home, '.claude', 'agents', 'code-reviewer.md')), false);
+});
+
+test('opencode setup rejects an unknown harness instead of writing Claude paths', () => {
+  const project = fs.mkdtempSync(path.join(os.tmpdir(), 'omc-project-'));
+  const cliPath = path.resolve(__dirname, '..', 'bin', 'omc-manage.js');
+  const result = spawnSync(
+    process.execPath,
+    [cliPath, 'setup', '--harness', 'opencdoe', '--scope', 'project', '--type', 'settings'],
+    { cwd: project, encoding: 'utf8' },
+  );
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /Invalid harness/);
+  assert.equal(fs.existsSync(path.join(project, '.claude')), false);
 });

@@ -28,10 +28,10 @@ function readSkillMd(skillPath) {
 }
 
 function parseFrontmatter(content) {
-  const match = content.match(/^---\n([\s\S]*?)\n---/);
+  const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
   if (!match) return null;
   const meta = {};
-  match[1].split('\n').forEach((line) => {
+  match[1].split(/\r?\n/).forEach((line) => {
     const idx = line.indexOf(':');
     if (idx === -1) return;
     meta[line.slice(0, idx).trim()] = line.slice(idx + 1).trim();
@@ -40,7 +40,7 @@ function parseFrontmatter(content) {
 }
 
 function getBody(content) {
-  return content.replace(/^---\n[\s\S]*?\n---\n?/, '').trim();
+  return content.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, '').trim();
 }
 
 function countLines(text) {

@@ -27,14 +27,27 @@ function parseScalarFrontmatter(content) {
   const { frontmatter, body } = splitFrontmatter(content);
   const map = {};
   if (frontmatter != null) {
+    let listKey = null;
     for (const rawLine of frontmatter.split('\n')) {
+      const listItem = rawLine.match(/^\s+-\s+(.+)$/);
+      if (listItem && listKey) {
+        map[listKey].push(listItem[1].trim().replace(/^['"]|['"]$/g, ''));
+        continue;
+      }
+      if (/^\s/.test(rawLine)) continue;
       const line = rawLine.trim();
       if (!line || line.startsWith('#')) continue;
       const idx = line.indexOf(':');
       if (idx === -1) continue;
       const key = line.slice(0, idx).trim();
       const value = line.slice(idx + 1).trim().replace(/^['"]|['"]$/g, '');
-      map[key] = value;
+      if (value === '') {
+        map[key] = [];
+        listKey = key;
+      } else {
+        map[key] = value;
+        listKey = null;
+      }
     }
   }
   return { hasFrontmatter: frontmatter != null, map, body };
@@ -51,22 +64,67 @@ const TOOL_PERMISSION_MAP = {
   webfetch: 'webfetch',
   websearch: 'websearch',
   task: 'task',
+  skill: 'skill',
+  askuserquestion: 'question',
+  todowrite: 'todowrite',
+  todoread: 'todowrite',
+  list: 'list',
+  lsp: 'lsp',
 };
 
-function denyPermissionLines(disallowedTools) {
-  const tools = String(disallowedTools || '')
-    .split(',')
-    .map((t) => t.trim().toLowerCase())
-    .filter(Boolean);
+function parseTools(value) {
+  const values = Array.isArray(value) ? value : String(value || '').split(',');
+  return values
+    .flatMap((tool) => String(tool).split(','))
+    .map((tool) => {
+      const normalized = tool.trim().toLowerCase();
+      const scoped = normalized.match(/^([^()]+)\((.*)\)$/);
+      return scoped
+        ? { name: scoped[1].trim(), pattern: scoped[2].trim().replace(/:\*$/, ' *') }
+        : { name: normalized, pattern: null };
+    })
+    .filter((tool) => tool.name);
+}
 
-  const denies = [];
-  for (const tool of tools) {
-    const key = TOOL_PERMISSION_MAP[tool];
-    if (key && !denies.includes(key)) denies.push(key);
+function permissionKey(tool) {
+  return TOOL_PERMISSION_MAP[tool] || tool;
+}
+
+function permissionLines(allowedTools, disallowedTools) {
+  const allowed = parseTools(allowedTools);
+  const disallowed = parseTools(disallowedTools);
+  const permissions = new Map();
+
+  const setScoped = (tool, action, fallback) => {
+    const key = permissionKey(tool.name);
+    if (!tool.pattern) {
+      permissions.set(key, action);
+      return;
+    }
+    const existing = permissions.get(key);
+    const rules = existing instanceof Map ? existing : new Map([['*', fallback]]);
+    rules.set(tool.pattern, action);
+    permissions.set(key, rules);
+  };
+
+  if (allowed.length > 0) {
+    permissions.set('*', 'deny');
+    for (const tool of allowed) setScoped(tool, 'allow', 'deny');
   }
-  if (denies.length === 0) return [];
+  for (const tool of disallowed) setScoped(tool, 'deny', allowed.length > 0 ? 'deny' : 'allow');
 
-  return ['permission:', ...denies.map((key) => `  ${key}: deny`)];
+  if (permissions.size === 0) return [];
+
+  return [
+    'permission:',
+    ...[...permissions].flatMap(([key, action]) => {
+      if (!(action instanceof Map)) return [`  ${serializeScalar(key)}: ${action}`];
+      return [
+        `  ${serializeScalar(key)}:`,
+        ...[...action].map(([pattern, scopedAction]) => `    ${serializeScalar(pattern)}: ${scopedAction}`),
+      ];
+    }),
+  ];
 }
 
 // OpenCode names an agent by its markdown filename, so `name` is dropped. The
@@ -79,9 +137,47 @@ function adaptAgentMarkdown(item, content) {
   const description = map.description || map.name || item.name || 'Specialized agent';
   const lines = [`description: ${serializeScalar(description)}`];
   lines.push('mode: subagent');
-  lines.push(...denyPermissionLines(map.disallowedTools));
+  lines.push(...permissionLines(map.tools, map.disallowedTools));
 
   return `---\n${lines.join('\n')}\n---\n${body}`;
+}
+
+// OpenCode requires a skill's frontmatter name to match its directory name.
+// The body normalization covers the most common Claude-specific invocation and
+// install-path forms without altering source artifacts used by Claude installs.
+function adaptSkillMarkdown(item, content) {
+  const { frontmatter, body } = splitFrontmatter(content);
+  if (frontmatter == null) return content;
+
+  const nameLine = `name: ${serializeScalar(item.name)}`;
+  const allowedKeys = new Set(['name', 'description', 'license', 'compatibility', 'metadata']);
+  const frontmatterLines = frontmatter.split('\n');
+  const keptLines = [];
+  let keepBlock = false;
+  for (const line of frontmatterLines) {
+    const keyMatch = line.match(/^([A-Za-z_-][\w-]*)\s*:/);
+    if (keyMatch) keepBlock = allowedKeys.has(keyMatch[1]);
+    if (keepBlock) keptLines.push(line);
+  }
+  const filteredFrontmatter = keptLines.join('\n');
+  const normalizedFrontmatter = /^name\s*:/m.test(filteredFrontmatter)
+    ? filteredFrontmatter.replace(/^name\s*:.*$/m, nameLine)
+    : `${nameLine}\n${filteredFrontmatter}`;
+  const normalizedBody = body
+    .replace(/oh-my-claudecode:/g, '')
+    .replace(/Skill\((["'])([^"']+)\1\)/g, 'skill(name="$2")')
+    .replace(/\b(?:Task|Agent)\(/g, 'task(')
+    .replace(/\bSkill\(/g, 'skill(')
+    .replace(/,\s*model\s*=\s*["'][^"']+["']/g, '')
+    .replace(/model\s*=\s*["'][^"']+["']\s*,\s*/g, '')
+    .replace(/~\/\.claude\/skills/g, '~/.config/opencode/skills')
+    .replace(/\.claude\/skills/g, '.opencode/skills')
+    .replace(/CLAUDE_CONFIG_DIR/g, 'OPENCODE_CONFIG_DIR')
+    .replace(/~\/\.claude/g, '~/.config/opencode')
+    .replace(/\.claude\//g, '.opencode/')
+    .replace(/CLAUDE\.md/g, 'AGENTS.md');
+
+  return `---\n${normalizedFrontmatter}\n---\n${normalizedBody}`;
 }
 
 // OpenCode commands keep the body as the prompt template and support
@@ -129,6 +225,7 @@ function adaptClaudeSettingsForOpencode(fragment) {
 module.exports = {
   adaptAgentMarkdown,
   adaptCommandMarkdown,
+  adaptSkillMarkdown,
   adaptClaudeSettingsForOpencode,
   serializeScalar,
 };

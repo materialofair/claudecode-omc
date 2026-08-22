@@ -102,12 +102,10 @@ Write new skills in two layers:
 ---
 name: skill-name
 description: Short, explicit statement of when to use the skill and what it does
-argument-hint: "<args>"          # Optional OpenCode field
-disable-model-invocation: false  # Optional OpenCode field
-user-invocable: true             # Optional OpenCode field
-allowed-tools:                   # Optional OpenCode field
-  - read
-model: glm-5.2                   # Optional OpenCode field
+license: MIT                    # Optional OpenCode field
+compatibility: Requires git     # Optional OpenCode field
+metadata:                       # Optional OpenCode field
+  owner: example-team
 ---
 
 # Skill Name
@@ -145,7 +143,8 @@ handoff: .omc/plans/example.md           # Optional OMC extension
 ```
 
 Keep the distinction clear:
-- official OpenCode defaults: `name`, `description`, and optional behavior fields
+- official OpenCode skill fields: `name`, `description`, and optional `license`, `compatibility`, and `metadata`
+- Claude-only behavior fields such as `argument-hint`, `disable-model-invocation`, `user-invocable`, `allowed-tools`, and `model` are ignored by OpenCode and should not be used to pin skill behavior
 - OMC extensions: `pipeline`, `next-skill`, `next-skill-args`, `handoff`
 
 #### Skill Invocation

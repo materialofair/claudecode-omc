@@ -1,4 +1,6 @@
 node_modules/
+__pycache__/
+*.py[cod]
 .upstream/
 .omc/
 .omc-manage/

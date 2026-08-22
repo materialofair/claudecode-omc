@@ -291,21 +291,24 @@ Mapping at install time:
 | `~/.claude/hooks/` | *skipped* — OpenCode uses plugins, not Claude hooks |
 | `~/.claude/hud/` | *skipped* — OpenCode theming lives in `tui.json` |
 
-### GLM-5.2+ model config
+### GLM-5.2 model config
 
-The shipped `.local/settings/opencode.json` declares a `zhipu` provider
-(BigModel's OpenAI-compatible endpoint) with `glm-5.2` and `glm-5.3` and sets
-`zhipu/glm-5.2` as the default model. It is merged into the generated
-`opencode.json` and reads the API key from the `ZHIPU_API_KEY` environment
-variable:
+The shipped `.local/settings/opencode.json` selects OpenCode's built-in
+`zhipuai/glm-5.2` model. Using the built-in provider keeps authentication,
+reasoning capabilities, and token limits aligned with OpenCode's models.dev
+catalog. Connect the matching provider in OpenCode, or set `ZHIPU_API_KEY`:
 
 ```bash
 export ZHIPU_API_KEY=...              # https://open.bigmodel.cn
 omc-manage setup --harness opencode   # then run `opencode` and pick a GLM model
 ```
 
-GLM Coding Plan (套餐) users should switch `baseURL` to
-`https://open.bigmodel.cn/api/coding/paas/v4` in `.local/settings/opencode.json`.
+On Windows PowerShell, use `$env:ZHIPU_API_KEY = "..."`; OpenCode's user
+configuration remains under `%USERPROFILE%\.config\opencode`.
+
+GLM Coding Plan (套餐) users should run OpenCode's `/connect`, select the
+ZhipuAI Coding Plan provider, and choose a model such as
+`zhipuai-coding-plan/glm-5.2` (or another model shown by `/models`).
 
 ## Conflict Resolution
 

@@ -23,10 +23,10 @@ function parseFrontmatter(skillFile) {
   if (!fs.existsSync(skillFile)) return null;
 
   const content = fs.readFileSync(skillFile, 'utf8');
-  const match = content.match(/^---\n([\s\S]*?)\n---/);
+  const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
   if (!match) return null;
 
-  const lines = match[1].split('\n');
+  const lines = match[1].split(/\r?\n/);
   const meta = {};
   let currentKey = null;
   let blockMode = false; // when value is `>-` or `|`

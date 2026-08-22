@@ -12,7 +12,12 @@ const { loadClaudeMd, mergeIntoExisting, assembleSections } = require('../merge/
 const { loadSettingsFragment, mergeSettingsFragments } = require('../merge/settings-merger');
 const { collectSourceDirsForType, getArtifactLoader } = require('../merge/artifact-source-loader');
 const { applyContentPatch } = require('../merge/content-patch');
-const { adaptAgentMarkdown, adaptCommandMarkdown, adaptClaudeSettingsForOpencode } = require('../merge/opencode-adapters');
+const {
+  adaptAgentMarkdown,
+  adaptCommandMarkdown,
+  adaptSkillMarkdown,
+  adaptClaudeSettingsForOpencode,
+} = require('../merge/opencode-adapters');
 
 const OMC_VERSION_PATH = path.join(os.homedir(), '.claude', '.omc-version.json');
 const OMC_CONFIG_PATH = path.join(os.homedir(), '.claude', '.omc-config.json');
@@ -277,13 +282,18 @@ async function installNameBasedArtifacts(artifactType, sources, mergeConfig, ins
     if (artifactType === 'skills' || item.isDirectory) {
       fileCount += await copyDirectory(item.path, dest, flags);
       // A skill patch targets its entry file (SKILL.md) inside the copied dir.
-      if (patch) {
+      if (patch || transformContent) {
         const skillFile = path.join(dest, 'SKILL.md');
         if (fs.existsSync(skillFile)) {
-          const { content, warnings } = applyContentPatch(fs.readFileSync(skillFile, 'utf8'), patch);
+          let content = fs.readFileSync(skillFile, 'utf8');
+          if (patch) {
+            const patched = applyContentPatch(content, patch);
+            content = patched.content;
+            patchedCount += 1;
+            for (const w of patched.warnings) console.log(`    patch warn (${item.name}): ${w}`);
+          }
+          if (transformContent) content = transformContent(item, content);
           await fsp.writeFile(skillFile, content, 'utf8');
-          patchedCount += 1;
-          for (const w of warnings) console.log(`    patch warn (${item.name}): ${w}`);
         }
       }
     } else {
@@ -482,6 +492,9 @@ async function setup(args, flags = {}) {
   const config = readConfig();
   const scope = flags.scope || 'user';
   const harness = flags.harness || 'claude';
+  if (harness !== 'claude' && harness !== 'opencode') {
+    throw new Error(`Invalid harness "${harness}" (expected claude or opencode)`);
+  }
   const { manifestPath } = getManagedMetadataPaths(scope, harness);
   const typeFilter = flags.type
     ? [...new Set(flags.type.split(',').map(type => (type === 'claude-md' ? 'guidelines' : type)))]
@@ -547,7 +560,13 @@ async function setup(args, flags = {}) {
     switch (typeConfig.mergeStrategy) {
       case 'name-based': {
         const transform = harness === 'opencode'
-          ? (artifactType === 'agents' ? adaptAgentMarkdown : artifactType === 'commands' ? adaptCommandMarkdown : null)
+          ? (artifactType === 'skills'
+            ? adaptSkillMarkdown
+            : artifactType === 'agents'
+              ? adaptAgentMarkdown
+              : artifactType === 'commands'
+                ? adaptCommandMarkdown
+                : null)
           : null;
         result = await installNameBasedArtifacts(artifactType, sourcesForType, mergeConfig, installTarget, flags, transform);
         break;

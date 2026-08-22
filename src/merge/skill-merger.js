@@ -11,11 +11,11 @@ function parseSkillMetadata(skillPath) {
   if (!fs.existsSync(skillFile)) return null;
 
   const content = fs.readFileSync(skillFile, 'utf8');
-  const match = content.match(/^---\n([\s\S]*?)\n---/);
+  const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
   if (!match) return null;
 
   const metadata = {};
-  match[1].split('\n').forEach((line) => {
+  match[1].split(/\r?\n/).forEach((line) => {
     const colonIndex = line.indexOf(':');
     if (colonIndex === -1) return;
     metadata[line.slice(0, colonIndex).trim()] = line.slice(colonIndex + 1).trim();

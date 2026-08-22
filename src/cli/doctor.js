@@ -6,6 +6,14 @@ const { readConfig } = require('../config/sources');
 const { getProjectRoot, getSourceArtifactDir, getInstallTarget } = require('../config/paths');
 const { ARTIFACT_TYPES, getArtifactTypeNames } = require('../config/artifact-types');
 
+function commandAvailable(command, options = {}) {
+  const platform = options.platform || process.platform;
+  const spawn = options.spawn || spawnSync;
+  const locator = platform === 'win32' ? 'where.exe' : 'which';
+  const result = spawn(locator, [command], { encoding: 'utf8' });
+  return !result.error && result.status === 0;
+}
+
 function check(label, fn) {
   try {
     const result = fn();
@@ -40,8 +48,7 @@ async function doctor() {
   }) && allOk;
 
   allOk = check('claude CLI available', () => {
-    const result = spawnSync('which', ['claude'], { encoding: 'utf8' });
-    return result.status === 0 ? true : 'claude not found in PATH';
+    return commandAvailable('claude') ? true : 'claude not found in PATH';
   }) && allOk;
 
   console.log('');
@@ -129,4 +136,4 @@ async function doctor() {
   console.log('');
 }
 
-module.exports = { doctor };
+module.exports = { doctor, commandAvailable };

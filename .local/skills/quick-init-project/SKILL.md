@@ -176,19 +176,19 @@ Scope limit: single main flow + minimal dependencies + quick demo capability.
 
 <Agent_Orchestration>
 Phase A (Requirement Parsing):
-- Use task(subagent_type="analyst", model="glm-5.2")
+- Use task(subagent_type="analyst")
 - Extract: product goal, delivery speed, team shape, runtime, data complexity
 - Output summary: problem statement, assumptions, unknowns (max 1 screen)
 - Save to: `.omc/quick-init/requirements.md`
 
 Phase B (Mode Decision):
-- Use task(subagent_type="architect", model="glm-5.2")
+- Use task(subagent_type="architect")
 - Apply hard gates first, then weighted scoring if needed
 - Output: selected mode, scores, hard gate hit (if any), reasoning (max 3 bullets), risk note (1 line)
 - Save to: `.omc/quick-init/decision.md`
 
 Phase C (Bootstrap Plan):
-- Use task(subagent_type="planner", model="glm-5.2")
+- Use task(subagent_type="planner")
 - Generate: directory structure, init commands, milestones (Day 1/3/7), minimal verification commands
 - Save to: `.omc/quick-init/bootstrap-plan.md`
 
