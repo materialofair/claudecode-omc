@@ -43,7 +43,7 @@ retries: process.env.CI ? 2 : 0
 
 ## Electron Routing
 
-If the target is an Electron app, use `/oh-my-claudecode:electron-driver` as the runtime backend while keeping Playwright assertions and artifacts.
+If the target is an Electron app, use `/electron-driver` as the runtime backend while keeping Playwright assertions and artifacts.
 
 ## References
 

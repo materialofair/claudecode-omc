@@ -201,7 +201,7 @@ referencing them in Section 3, write:
 **Discovery shortcut for the user:** if `_index.md` is missing entirely, suggest
 they run `omc-manage skill index --scope user` (or just `omc-manage setup`,
 which regenerates it as a side effect). For a quality audit, use
-`/oh-my-claudecode:skill-stocktake`.
+`/skill-stocktake`.
 
 ### Phase 0.7: Project Context Probe (cheap, deterministic)
 

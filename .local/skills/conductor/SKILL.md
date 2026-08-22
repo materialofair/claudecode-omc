@@ -37,7 +37,7 @@ Preserved Conductor invariants:
 - Review is a first-class stage before closure
 
 OpenCode-specific adaptation:
-- Use `Task(subagent_type="oh-my-claudecode:...")` for delegation
+- Use `task(subagent_type="...")` for delegation
 - Use `.omc/conductor/` paths used by OMC hooks
 - Use `question` for gated approvals when user decisions are required
 </Compatibility>

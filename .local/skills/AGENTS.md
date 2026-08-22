@@ -7,7 +7,7 @@
 
 ## Purpose
 
-Skills are reusable workflow templates authored as OpenCode skill packages. In OMC they are commonly invoked via `/oh-my-claudecode:skill-name`, but they should still be written as standard `SKILL.md` packages first. Each skill provides:
+Skills are reusable workflow templates authored as OpenCode skill packages. In OMC they are commonly invoked via `/skill-name`, but they should still be written as standard `SKILL.md` packages first. Each skill provides:
 - structured prompts for specific workflows
 - activation triggers (manual or automatic)
 - integration with execution modes
@@ -152,10 +152,10 @@ Keep the distinction clear:
 
 ```bash
 # Manual invocation
-/oh-my-claudecode:skill-name
+/skill-name
 
 # With arguments
-/oh-my-claudecode:skill-name arg1 arg2
+/skill-name arg1 arg2
 
 # Auto-detected from keywords
 "autopilot build me a REST API"
@@ -200,7 +200,7 @@ Default reference order:
 ### Testing Requirements
 
 - skills are verified via integration tests
-- test invocation with `/oh-my-claudecode:skill-name`
+- test invocation with `/skill-name`
 - verify positive and negative prompt cases
 - verify any invocation flags or tool restrictions
 - for git-related skills, follow `templates/rules/git-workflow.md`

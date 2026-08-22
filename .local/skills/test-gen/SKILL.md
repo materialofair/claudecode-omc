@@ -46,9 +46,9 @@ Run the smallest targeted test command first, then broaden if needed.
 
 If higher orchestration is needed, combine with:
 
-- `/oh-my-claudecode:tdd-generator`
-- `/oh-my-claudecode:test-coverage`
-- `/oh-my-claudecode:ultraqa`
+- `/tdd-generator`
+- `/test-coverage`
+- `/ultraqa`
 
 ## Rules
 
