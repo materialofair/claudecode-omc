@@ -5,12 +5,11 @@ argument-hint: "[--track <slug>] [--source superpowers|bmad|both] [--target spec
 disable-model-invocation: false
 user-invocable: true
 allowed-tools:
-  - Read
-  - Grep
-  - Glob
-  - Edit
-  - Write
-  - AskUserQuestion
+  - read
+  - grep
+  - glob
+  - edit
+  - question
 model: glm-5.2
 ---
 
@@ -98,7 +97,7 @@ Track resolution:
 6. **Plan writes.** For each `(source, target)` pair, build the distilled block. Compose the full block text including markers and the boilerplate `> Source:` line.
 
 7. **Dry run or apply.**
-   - If `--dry-run` (or the user did not yet authorize writes): print the per-file plan with proposed block headers and a 5-10 line preview of each block, then ask the user to confirm via `AskUserQuestion`.
+   - If `--dry-run` (or the user did not yet authorize writes): print the per-file plan with proposed block headers and a 5-10 line preview of each block, then ask the user to confirm via `question`.
    - Otherwise apply writes.
 
 8. **Apply writes idempotently.**

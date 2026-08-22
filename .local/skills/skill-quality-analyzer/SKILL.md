@@ -1,11 +1,11 @@
 ---
 name: skill-quality-analyzer
-description: Analyze the quality of a Claude Code skill across discovery, structure, safety, examples, and maintainability.
+description: Analyze the quality of a OpenCode skill across discovery, structure, safety, examples, and maintainability.
 ---
 
 # Skill Quality Analyzer
 
-Static analysis system for Claude Code skills. Identifies quality issues, scores the skill across six dimensions, and produces actionable recommendations before distribution.
+Static analysis system for OpenCode skills. Identifies quality issues, scores the skill across six dimensions, and produces actionable recommendations before distribution.
 
 ## Workflow
 
@@ -89,7 +89,7 @@ What it measures:
 ### 5. Best Practices (15%)
 
 What it measures:
-- Claude Code naming conventions
+- OpenCode naming conventions
 - proper package layout
 - no misleading platform branding
 - OMC-only metadata clearly treated as project-specific

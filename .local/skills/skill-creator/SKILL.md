@@ -16,7 +16,7 @@ This local version is based on the vendored Anthropic upstream file at `referenc
 
 - Upstream baseline: overall skill-creation loop, communication guidance, capture-intent flow, anatomy, progressive disclosure, and writing principles
 - Local OMC adaptation: replaces upstream eval-viewer and benchmark workflow with `skill-quality-analyzer`, `skill-debugger`, and `skill-tester`
-- Local OMC adaptation: keeps Claude Code-oriented metadata examples used in this repo
+- Local OMC adaptation: keeps OpenCode-oriented metadata examples used in this repo
 - Local OMC adaptation: confines project-specific orchestration fields such as `pipeline`, `next-skill`, and `handoff` to explicit local sections
 - Maintenance rule: when upstream changes, update the vendored file first, then re-apply only the minimal OMC-specific differences
 
@@ -79,7 +79,7 @@ Extract from the conversation first:
 - input and output formats
 
 Then fill the gaps:
-1. What should this skill enable Claude to do?
+1. What should this skill enable OpenCode to do?
 2. When should this skill trigger?
 3. What should the output or effect look like?
 4. Should we set up prompt tests to verify the skill works?
@@ -147,8 +147,8 @@ argument-hint: "<args>"
 disable-model-invocation: false
 user-invocable: true
 allowed-tools:
-  - Read
-  - Grep
+  - read
+  - grep
 model: glm-5.2
 ---
 ```
@@ -161,7 +161,7 @@ Use when the same code keeps getting rewritten or determinism matters.
 
 ##### `references/`
 
-Use for documentation Claude should read only when needed.
+Use for documentation OpenCode should read only when needed.
 
 ##### `assets/`
 

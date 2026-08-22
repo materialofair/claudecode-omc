@@ -1,6 +1,6 @@
 # Skill Debugger
 
-Routing and configuration diagnosis skill for Claude Code skill packages.
+Routing and configuration diagnosis skill for OpenCode skill packages.
 
 This README reflects the current OMC workflow:
 - `skill-creator` authors or upgrades the skill
@@ -11,7 +11,7 @@ This README reflects the current OMC workflow:
 ## Quick Install
 
 ```bash
-cp -r skill-debugger ~/.claude/skills/
+cp -r skill-debugger ~/.config/opencode/skills/
 ```
 
 ## Usage

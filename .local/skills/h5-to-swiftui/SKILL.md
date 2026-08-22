@@ -19,13 +19,12 @@ argument-hint: "<path-to-h5-source> [--ios-floor 17] [--device 'iPhone 15 Pro'] 
 disable-model-invocation: false
 user-invocable: true
 allowed-tools:
-  - Read
-  - Grep
-  - Glob
-  - Bash
-  - Write
-  - Edit
-  - Agent
+  - read
+  - grep
+  - glob
+  - bash
+  - edit
+  - task
 model: glm-5.2
 ---
 

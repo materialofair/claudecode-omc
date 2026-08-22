@@ -1,11 +1,11 @@
 ---
 name: skill-debugger
-description: Diagnose why a Claude Code skill is under-triggering, over-triggering, undiscoverable, or misconfigured.
+description: Diagnose why a OpenCode skill is under-triggering, over-triggering, undiscoverable, or misconfigured.
 ---
 
 # Skill Debugger
 
-Systematic debugging tool for Claude Code skills that are not being selected correctly or are behaving incorrectly once invoked. Focus on the current Claude Code skill model: `name` and `description` drive discovery, while optional metadata controls invocation and execution behavior.
+Systematic debugging tool for OpenCode skills that are not being selected correctly or are behaving incorrectly once invoked. Focus on the current OpenCode skill model: `name` and `description` drive discovery, while optional metadata controls invocation and execution behavior.
 
 ## Workflow
 
@@ -37,7 +37,7 @@ Systematic debugging tool for Claude Code skills that are not being selected cor
 
 ### 1. Vague description
 
-Symptom: skill exists but Claude almost never uses it.
+Symptom: skill exists but OpenCode almost never uses it.
 
 ```yaml
 Bad: description: Helps with various tasks
@@ -52,11 +52,11 @@ Fix: narrow the promise and make the boundary explicit.
 
 ### 3. Skill not discovered
 
-Symptom: Claude Code says the skill does not exist.
+Symptom: OpenCode says the skill does not exist.
 
 Check:
-- `~/.claude/skills/<name>/SKILL.md`
-- project-local `.claude/skills/<name>/SKILL.md`
+- `~/.config/opencode/skills/<name>/SKILL.md`
+- project-local `.opencode/skills/<name>/SKILL.md`
 
 ### 4. Name mismatch
 
@@ -90,7 +90,7 @@ Fix: tighten the description around review findings and regressions
 === Skill Debugging Report ===
 
 Skill: financial-analyzer
-Path: ~/.claude/skills/financial-analyzer/
+Path: ~/.config/opencode/skills/financial-analyzer/
 Status: rarely triggers
 
 Issues Found:
@@ -169,7 +169,7 @@ If the skill should be callable directly, do not leave `user-invocable: false`.
 ### Fix 5: Fix name mismatch
 
 ```text
-Folder: ~/.claude/skills/code-review/
+Folder: ~/.config/opencode/skills/code-review/
 YAML:   name: code-review
 ```
 
@@ -197,7 +197,7 @@ Recommended order:
 
 ## Limitations
 
-- Cannot inspect Claude's private internal routing logic
+- Cannot inspect OpenCode's private internal routing logic
 - Uses evidence and prompt-based inference
 - Cannot auto-fix every issue
 

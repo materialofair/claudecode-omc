@@ -1,6 +1,6 @@
 ---
 name: multi-model-research
-description: Run structured multi-model research (Claude, Gemini, Codex) and synthesize consensus, disagreements, and final recommendations.
+description: Run structured multi-model research (GLM, Gemini, Codex) and synthesize consensus, disagreements, and final recommendations.
 ---
 
 # Multi-Model Research

@@ -7,7 +7,7 @@
 
 ## Purpose
 
-Skills are reusable workflow templates authored as Claude Code skill packages. In OMC they are commonly invoked via `/oh-my-claudecode:skill-name`, but they should still be written as standard `SKILL.md` packages first. Each skill provides:
+Skills are reusable workflow templates authored as OpenCode skill packages. In OMC they are commonly invoked via `/oh-my-claudecode:skill-name`, but they should still be written as standard `SKILL.md` packages first. Each skill provides:
 - structured prompts for specific workflows
 - activation triggers (manual or automatic)
 - integration with execution modes
@@ -53,7 +53,7 @@ Skills are reusable workflow templates authored as Claude Code skill packages. I
 |-----------|-------|---------|
 | `ai-slop-cleaner/SKILL.md` | ai-slop-cleaner | Regression-safe cleanup workflow for AI-generated code slop |
 | `learner/SKILL.md` | learner | Extract reusable skill from session |
-| `ask/SKILL.md` | ask | Ask Claude, Codex, or Gemini via `omc ask` and capture an artifact |
+| `ask/SKILL.md` | ask | Ask GLM, Codex, or Gemini via `omc ask` and capture an artifact |
 | `note/SKILL.md` | note | Save notes for compaction resilience |
 | `cancel/SKILL.md` | cancel | Cancel any active OMC mode |
 | `hud/SKILL.md` | hud | Configure HUD display |
@@ -62,7 +62,7 @@ Skills are reusable workflow templates authored as Claude Code skill packages. I
 | `omc-setup/SKILL.md` | omc-setup | One-time setup wizard |
 | `omc-help/SKILL.md` | omc-help | Usage guide |
 | `mcp-setup/SKILL.md` | mcp-setup | Configure MCP servers |
-| `skill-creator/SKILL.md` | skill-creator | Create or upgrade Claude Code skill packages |
+| `skill-creator/SKILL.md` | skill-creator | Create or upgrade OpenCode skill packages |
 | `skill/SKILL.md` | skill | Manage local skills |
 
 ### Domain Skills
@@ -102,12 +102,12 @@ Write new skills in two layers:
 ---
 name: skill-name
 description: Short, explicit statement of when to use the skill and what it does
-argument-hint: "<args>"          # Optional Claude Code field
-disable-model-invocation: false  # Optional Claude Code field
-user-invocable: true             # Optional Claude Code field
-allowed-tools:                   # Optional Claude Code field
-  - Read
-model: glm-5.2                   # Optional Claude Code field
+argument-hint: "<args>"          # Optional OpenCode field
+disable-model-invocation: false  # Optional OpenCode field
+user-invocable: true             # Optional OpenCode field
+allowed-tools:                   # Optional OpenCode field
+  - read
+model: glm-5.2                   # Optional OpenCode field
 ---
 
 # Skill Name
@@ -145,7 +145,7 @@ handoff: .omc/plans/example.md           # Optional OMC extension
 ```
 
 Keep the distinction clear:
-- official Claude Code defaults: `name`, `description`, and optional behavior fields
+- official OpenCode defaults: `name`, `description`, and optional behavior fields
 - OMC extensions: `pipeline`, `next-skill`, `next-skill-args`, `handoff`
 
 #### Skill Invocation
@@ -189,7 +189,7 @@ Skill chaining:
 If `pipeline` or `next-skill` metadata is present, OMC appends a standardized handoff block to the rendered prompt so downstream steps are explicit.
 
 Official skeleton first, OMC extension second:
-- first write the skill as a normal Claude Code package based on the upstream Anthropic structure
+- first write the skill as a normal OpenCode package based on the upstream Anthropic structure
 - then add OMC orchestration metadata only if the project needs it
 
 Default reference order:

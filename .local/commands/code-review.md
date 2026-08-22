@@ -160,8 +160,8 @@ If PR/MR not found, stop with error. Store metadata for later phases.
 
 Build review context (platform-agnostic):
 
-1. **Project rules** — Read `CLAUDE.md`, `.claude/docs/`, and any contributing guidelines
-2. **Planning artifacts** — Check `.claude/prds/`, `.claude/plans/`, `.claude/reviews/`, and legacy `.claude/PRPs/{prds,plans,reports,reviews}/`
+1. **Project rules** — Read `AGENTS.md`, `.opencode/docs/`, and any contributing guidelines
+2. **Planning artifacts** — Check `.opencode/prds/`, `.opencode/plans/`, `.opencode/reviews/`, and legacy `.opencode/PRPs/{prds,plans,reports,reviews}/`
 3. **PR/MR intent** — Parse description for goals, linked issues, test plans
 4. **Changed files** — List all modified files and categorize by type (source, test, config, docs)
 
@@ -266,9 +266,9 @@ Special cases:
 
 ### Phase 6 — REPORT
 
-Write artifact at `.claude/reviews/<platform>-<N>-review.md`
-(e.g. `.claude/reviews/pr-42-review.md` for GitHub, `.claude/reviews/mr-42-review.md` for GitLab),
-unless the repo uses legacy `.claude/PRPs/reviews/`:
+Write artifact at `.opencode/reviews/<platform>-<N>-review.md`
+(e.g. `.opencode/reviews/pr-42-review.md` for GitHub, `.opencode/reviews/mr-42-review.md` for GitLab),
+unless the repo uses legacy `.opencode/PRPs/reviews/`:
 
 ```markdown
 # Review: <PR|MR> #<N> — <TITLE>
@@ -382,7 +382,7 @@ Issues: <critical_count> critical, <high_count> high, <medium_count> medium, <lo
 Validation: <pass_count>/<total_count> checks passed
 
 Artifacts:
-  Review: .claude/reviews/<pr|mr>-<N>-review.md
+  Review: .opencode/reviews/<pr|mr>-<N>-review.md
   URL: <PR/MR URL>
 
 Next steps:

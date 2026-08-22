@@ -18,7 +18,7 @@ Use this skill for evidence-driven investigation before implementation.
 
 1. Scope the target precisely.
 2. Gather evidence:
-   - Read relevant files and tests
+   - read relevant files and tests
    - Reproduce the issue when possible
    - Capture exact errors and stack traces
 3. Build and test hypotheses:

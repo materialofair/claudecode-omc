@@ -14,7 +14,7 @@ Use this skill to drive implementation through tests first.
    - UI behavior -> component/integration tests
    - User journeys -> E2E tests
 2. RED:
-   - Write failing test first
+   - edit failing test first
 3. GREEN:
    - Implement minimal code to pass
 4. REFACTOR:

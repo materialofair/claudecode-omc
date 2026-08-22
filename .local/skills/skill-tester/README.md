@@ -1,6 +1,6 @@
 # Skill Tester
 
-Prompt-level testing skill for Claude Code skill packages.
+Prompt-level testing skill for OpenCode skill packages.
 
 This README reflects the current OMC workflow:
 - `skill-creator` writes or updates the skill
@@ -11,7 +11,7 @@ This README reflects the current OMC workflow:
 ## Quick Install
 
 ```bash
-cp -r skill-tester ~/.claude/skills/
+cp -r skill-tester ~/.config/opencode/skills/
 ```
 
 ## Usage

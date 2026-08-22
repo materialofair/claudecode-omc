@@ -1,11 +1,11 @@
 ---
 name: skill-tester
-description: Test a Claude Code skill with prompt scenarios, invocation checks, negative cases, and execution validation.
+description: Test a OpenCode skill with prompt scenarios, invocation checks, negative cases, and execution validation.
 ---
 
 # Skill Tester
 
-Prompt-level testing tool for Claude Code skills. Verifies that a skill is selected when it should be, ignored when it should not be, and behaves correctly once invoked.
+Prompt-level testing tool for OpenCode skills. Verifies that a skill is selected when it should be, ignored when it should not be, and behaves correctly once invoked.
 
 ## Capabilities
 

@@ -1,6 +1,6 @@
 # Skill Quality Analyzer
 
-Static analysis skill for Claude Code skill packages.
+Static analysis skill for OpenCode skill packages.
 
 This README reflects the current OMC model:
 - `skill-creator` is the main authorship entrypoint
@@ -11,15 +11,15 @@ This README reflects the current OMC model:
 
 ```bash
 # User-level
-cp -r skill-quality-analyzer ~/.claude/skills/
+cp -r skill-quality-analyzer ~/.config/opencode/skills/
 
 # Project-level
-cp -r skill-quality-analyzer .claude/skills/
+cp -r skill-quality-analyzer .opencode/skills/
 ```
 
 ## Usage
 
-Once installed, Claude Code can use this skill when you ask about skill quality:
+Once installed, OpenCode can use this skill when you ask about skill quality:
 
 ```text
 Analyze the quality of my skill-creator skill

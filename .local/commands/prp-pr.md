@@ -7,7 +7,7 @@ argument-hint: "[base-branch] (default: main)"
 
 > Local override of upstream `ecc/commands/prp-pr.md`. Adds GitLab (incl. self-hosted
 > `code.iflytek.com`) support. Do not edit the upstream file — keep changes here.
-> Difference vs `/pr`: this variant references PRP artifacts (`.claude/PRPs/...`) and
+> Difference vs `/pr`: this variant references PRP artifacts (`.opencode/PRPs/...`) and
 > suggests `/prp-commit` for staging.
 
 **Input**: `$ARGUMENTS` — optional, may contain a base branch name and/or flags (e.g., `--draft`).
@@ -115,9 +115,9 @@ Categorize: source, tests, docs, config, migrations.
 ### PRP Artifacts
 
 Check for related PRP artifacts:
-- `.claude/PRPs/reports/` — Implementation reports
-- `.claude/PRPs/plans/` — Plans that were executed
-- `.claude/PRPs/prds/` — Related PRDs
+- `.opencode/PRPs/reports/` — Implementation reports
+- `.opencode/PRPs/plans/` — Plans that were executed
+- `.opencode/PRPs/prds/` — Related PRDs
 
 Reference these in the body if they exist.
 

@@ -266,9 +266,9 @@ Before claiming "ready to initialize", must satisfy:
 5. At least one risk with mitigation provided
 
 <Tool_Usage>
-- Use `Agent` tool with appropriate subagent types for each phase
-- Use `Write` tool to save outputs to `.omc/quick-init/` directory
-- Use `Bash` tool to execute verification commands (lint/test/build) if user requests immediate setup
+- Use `task` tool with appropriate subagent types for each phase
+- Use `edit` tool to save outputs to `.omc/quick-init/` directory
+- Use `bash` tool to execute verification commands (lint/test/build) if user requests immediate setup
 - Use `state_write(mode="quick-init")` to track progress across phases
 - Use `notepad_write_working` to log key decisions for session context
 </Tool_Usage>

@@ -115,9 +115,9 @@ Categorize: source, tests, docs, config, migrations.
 ### Planning Artifacts
 
 Check for artifacts produced by `/plan-prd`, `/plan`, or legacy PRP workflow:
-- `.claude/prds/` — PRDs
-- `.claude/plans/` — Plans
-- `.claude/PRPs/{prds,plans,reports}/` — legacy PRP paths
+- `.opencode/prds/` — PRDs
+- `.opencode/plans/` — Plans
+- `.opencode/PRPs/{prds,plans,reports}/` — legacy PRP paths
 
 Reference these in the body if they exist.
 

@@ -83,7 +83,7 @@ trigger with no task, ask once: "What do you want to get done?" Then proceed.
 ### Step 2 — Dispatch ONE independent optimizer subagent
 
 Dispatch a **read-only** subagent with the instruction block below — prefer one
-with no Write/Edit access (`analyst`, or `Explore`/`explore`) so the read-only
+with no edit access (`analyst`, or `Explore`/`explore`) so the read-only
 rule is tool-enforced, not just prompt-level. Avoid `general-purpose` here: it
 can mutate files. GLM-5.2 is plenty for this optimization pass —
 and for the actual execution in Step 4. The subagent runs a compressed
@@ -113,7 +113,7 @@ carry their diagnosis in the pasted payload.
 > 1. Identify the real intent and the task type (feature / bugfix / refactor /
 >    research / perf / docs / other).
 > 2. Light project probe (≤ 5 read-only calls): detect stack from manifests,
->    skim CLAUDE.md/AGENTS.md/README if present, `git status --short` only if
+>    skim AGENTS.md/README if present, `git status --short` only if
 >    the prompt references current changes/branch. Cite only what you actually
 >    read. Skip silently if nothing is found.
 > 3. Produce **exactly 3 concise variants** that differ by SCOPE/ambition:
@@ -175,7 +175,7 @@ generate the 3 variants yourself in the main session, and proceed to Step 3.
 
 ### Step 3 — Present the variants and let the user choose / edit / supplement
 
-Use `AskUserQuestion` with the three variants as options. Put the variant's
+Use `question` with the three variants as options. Put the variant's
 `prompt` text in each option's `preview` so the user can read the actual prompt
 they'd run. Header: "Which prompt". The built-in "Other" choice lets the user
 type a fully custom prompt; the per-option notes field lets them **supplement
@@ -240,7 +240,7 @@ Step 2 → analyst subagent returns:
     C) Thorough — Balanced + unit tests for limiter, an integration test on the
                    route, and a verify pass.
 
-Step 3 → AskUserQuestion (A/B/C, previews show full prompt text).
+Step 3 → question (A/B/C, previews show full prompt text).
   User picks B, adds note: "limit should be 10/min".
 
 Step 3 (cont.) → echo final prompt (Balanced, 10/min), wait for explicit "go".

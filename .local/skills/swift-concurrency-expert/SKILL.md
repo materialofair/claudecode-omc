@@ -25,7 +25,7 @@ Prefer edits that preserve existing behavior while satisfying data-race safety.
 Common fixes:
 - **UI-bound types**: annotate the type or relevant members with `@MainActor`.
 - **Protocol conformance on main actor types**: make the conformance isolated (e.g., `extension Foo: @MainActor SomeProtocol`).
-- **Global/static state**: protect with `@MainActor` or move into an actor.
+- **global/static state**: protect with `@MainActor` or move into an actor.
 - **Background work**: move expensive work into a `@concurrent` async function on a `nonisolated` type or use an `actor` to guard mutable state.
 - **Sendable errors**: prefer immutable/value types; add `Sendable` conformance only when correct; avoid `@unchecked Sendable` unless you can prove thread safety.
 

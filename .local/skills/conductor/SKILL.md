@@ -1,6 +1,6 @@
 ---
 name: conductor
-description: Use when user wants durable Context->Spec->Plan->Implement tracks ('conductor', 'structured workflow', 'track this', 'context then plan'). Creates and governs `.omc/conductor/` artifacts for Claude Code multi-session delivery.
+description: Use when user wants durable Context->Spec->Plan->Implement tracks ('conductor', 'structured workflow', 'track this', 'context then plan'). Creates and governs `.omc/conductor/` artifacts for OpenCode multi-session delivery.
 argument-hint: "<subcommand | track-goal>"
 level: 4
 ---
@@ -8,7 +8,7 @@ level: 4
 # Conductor
 
 <Purpose>
-Conductor is a durable track-management workflow for Claude Code. It preserves long-lived context on disk, turns ambiguous requests into spec+plan artifacts, and controls implementation/review so work can safely span multiple sessions.
+Conductor is a durable track-management workflow for OpenCode. It preserves long-lived context on disk, turns ambiguous requests into spec+plan artifacts, and controls implementation/review so work can safely span multiple sessions.
 
 Primary loop:
 `Setup -> Track -> Spec(+approval) -> Plan(+approval) -> Implement -> Review -> Reconcile`
@@ -28,7 +28,7 @@ Primary loop:
 </Do_Not_Use_When>
 
 <Compatibility>
-This skill is aligned to the Conductor protocol in `oh-my-codex`, adapted to Claude runtime primitives, and incorporates best practices from Gemini Conductor, Kiro SDD, and cc-sdd.
+This skill is aligned to the Conductor protocol in `oh-my-codex`, adapted to OpenCode runtime primitives, and incorporates best practices from Gemini Conductor, Kiro SDD, and cc-sdd.
 
 Preserved Conductor invariants:
 - Durable context is on disk, not only in chat memory
@@ -36,10 +36,10 @@ Preserved Conductor invariants:
 - Important tracks carry both spec and plan artifacts
 - Review is a first-class stage before closure
 
-Claude-specific adaptation:
+OpenCode-specific adaptation:
 - Use `Task(subagent_type="oh-my-claudecode:...")` for delegation
 - Use `.omc/conductor/` paths used by OMC hooks
-- Use `AskUserQuestion` for gated approvals when user decisions are required
+- Use `question` for gated approvals when user decisions are required
 </Compatibility>
 
 <Execution_Policy>
@@ -89,7 +89,7 @@ Conductor also scans for tracks created by other tools (e.g., Codex conductor) s
 - On Setup/Resume, scan each path for subdirectories containing `metadata.json` or `spec.md`.
 - Codex tracks use a slightly different metadata schema. Normalize on read:
 
-| Codex field | Claude conductor field | Mapping |
+| Codex field | OpenCode conductor field | Mapping |
 |-------------|----------------------|---------|
 | `track_id` | `track_id` | Direct |
 | `type` (`"feature"`) | `type` | Direct |
@@ -100,7 +100,7 @@ Conductor also scans for tracks created by other tools (e.g., Codex conductor) s
 
 - Codex tracks that have `spec.md` + `plan.md` but no `metadata.json` are also recognized — infer metadata from filenames and plan checkbox state.
 - External tracks appear in `status` output with an `[external]` tag and their source path.
-- External tracks are **read-only by default**. To work on an external track, conductor copies it into `.omc/conductor/tracks/<slug>/` first (prompted via `AskUserQuestion`).
+- External tracks are **read-only by default**. To work on an external track, conductor copies it into `.omc/conductor/tracks/<slug>/` first (prompted via `question`).
 
 **Context fallback:** If `.omc/conductor/context/` is empty or missing during setup, also check:
 - `conductor/product.md` → seed `context/product.md`
@@ -197,14 +197,14 @@ Conductor workflow operations (can be executed by skill protocol even if no dedi
      - Update `conductor-state.json` index
 
 3. **Preflight Context**
-   - Read in order: context docs → active spec → active plan → relevant code/config.
+   - read in order: context docs → active spec → active plan → relevant code/config.
    - Output compact brief: goal, accepted constraints, current phase, next task, blockers.
 
 4. **Spec Generation** (phase: `spec`)
    - Delegate to `analyst` for requirements structure.
    - Delegate to `architect` for system boundaries, risks, and acceptance criteria.
    - Persist to `tracks/<slug>/spec.md`.
-   - **Gate: present spec to user for approval via `AskUserQuestion` before proceeding.**
+   - **Gate: present spec to user for approval via `question` before proceeding.**
    - Update `metadata.json` status to `planned` only after approval.
 
 5. **Plan Generation** (phase: `planning`)
@@ -212,7 +212,7 @@ Conductor workflow operations (can be executed by skill protocol even if no dedi
    - Plan must follow the phased task format (see Plan Format below).
    - Require testable acceptance criteria and explicit verification commands.
    - Persist to `tracks/<slug>/plan.md`.
-   - **Gate: present plan to user for approval via `AskUserQuestion` before proceeding.**
+   - **Gate: present plan to user for approval via `question` before proceeding.**
    - Optionally delegate to `critic` for plan review before user approval.
 
 6. **Implement** (phase: `implementing`)
@@ -227,7 +227,7 @@ Conductor workflow operations (can be executed by skill protocol even if no dedi
    - After completing the last task of a phase:
      1. Announce phase completion and run automated checks.
      2. Prepare a manual verification checklist for user-visible behavior.
-     3. Wait for explicit user feedback via `AskUserQuestion`.
+     3. Wait for explicit user feedback via `question`.
      4. Create a checkpoint commit when the phase is accepted.
      5. Record the checkpoint SHA in plan.md.
    - If verification fails: reopen relevant tasks, return to implement.

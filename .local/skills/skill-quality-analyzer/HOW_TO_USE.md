@@ -10,7 +10,7 @@ Check the quality score for skills/skill-debugger/
 Generate a quality report for skills/skill-tester/
 ```
 
-What Claude will do:
+What OpenCode will do:
 1. Read the skill package
 2. Inspect discovery surface, structure, and examples
 3. Check execution-safety metadata
@@ -23,7 +23,7 @@ Compare my local skill-creator against its vendored upstream baseline
 Check whether this upstream-derived skill still isolates local OMC adaptations correctly
 ```
 
-What Claude will check:
+What OpenCode will check:
 - whether the local file still tracks the baseline where it should
 - whether local adaptations are clearly marked
 - whether project-specific metadata leaked into general guidance
@@ -88,7 +88,7 @@ Which upstream-derived skills have drifted the most?
 
 #### 5. Best Practices
 
-- Does the package follow Claude Code conventions?
+- Does the package follow OpenCode conventions?
 - Is misleading platform branding avoided?
 - If upstream-derived, is baseline vs local adaptation clearly separated?
 
