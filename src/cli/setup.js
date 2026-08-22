@@ -3,7 +3,7 @@ const fs = require('fs');
 const fsp = require('fs/promises');
 const path = require('path');
 const os = require('os');
-const { getProjectRoot, getScopedInstallTarget, getMergeConfigPath } = require('../config/paths');
+const { getProjectRoot, getScopedInstallTarget, getMergeConfigPath, getOpencodeConfigDir } = require('../config/paths');
 const { readConfig, filterItemsByAllowlist, loadGovernance } = require('../config/sources');
 const { getArtifactTypeNames, ARTIFACT_TYPES } = require('../config/artifact-types');
 const { detectConflicts, resolveConflicts, applyResolutions } = require('../merge/base-merger');
@@ -12,6 +12,7 @@ const { loadClaudeMd, mergeIntoExisting, assembleSections } = require('../merge/
 const { loadSettingsFragment, mergeSettingsFragments } = require('../merge/settings-merger');
 const { collectSourceDirsForType, getArtifactLoader } = require('../merge/artifact-source-loader');
 const { applyContentPatch } = require('../merge/content-patch');
+const { adaptAgentMarkdown, adaptCommandMarkdown, adaptClaudeSettingsForOpencode } = require('../merge/opencode-adapters');
 
 const OMC_VERSION_PATH = path.join(os.homedir(), '.claude', '.omc-version.json');
 const OMC_CONFIG_PATH = path.join(os.homedir(), '.claude', '.omc-config.json');
@@ -64,10 +65,10 @@ function uniq(values) {
   return [...new Set(values)];
 }
 
-function getManagedMetadataPaths(scope) {
+function getManagedMetadataPaths(scope, harness = 'claude') {
   const baseDir = scope === 'project'
-    ? path.join(process.cwd(), '.claude')
-    : path.join(os.homedir(), '.claude');
+    ? (harness === 'opencode' ? path.join(process.cwd(), '.opencode') : path.join(process.cwd(), '.claude'))
+    : (harness === 'opencode' ? getOpencodeConfigDir() : path.join(os.homedir(), '.claude'));
 
   return {
     configPath: path.join(baseDir, '.omc-config.json'),
@@ -210,7 +211,7 @@ function getManagedPathForItem(artifactType, item) {
   return sourceExt && !item.name.endsWith(sourceExt) ? `${item.name}${sourceExt}` : item.name;
 }
 
-async function installNameBasedArtifacts(artifactType, sources, mergeConfig, installTarget, flags) {
+async function installNameBasedArtifacts(artifactType, sources, mergeConfig, installTarget, flags, transformContent = null) {
   const loader = getArtifactLoader(artifactType);
   if (!loader) return { count: 0, total: 0 };
 
@@ -287,11 +288,16 @@ async function installNameBasedArtifacts(artifactType, sources, mergeConfig, ins
       }
     } else {
       await fsp.mkdir(path.dirname(dest), { recursive: true });
-      if (patch) {
-        const { content, warnings } = applyContentPatch(fs.readFileSync(item.path, 'utf8'), patch);
+      if (patch || transformContent) {
+        let content = fs.readFileSync(item.path, 'utf8');
+        if (patch) {
+          const patched = applyContentPatch(content, patch);
+          content = patched.content;
+          patchedCount += 1;
+          for (const w of patched.warnings) console.log(`    patch warn (${item.name}): ${w}`);
+        }
+        if (transformContent) content = transformContent(item, content);
         await fsp.writeFile(dest, content, 'utf8');
-        patchedCount += 1;
-        for (const w of warnings) console.log(`    patch warn (${item.name}): ${w}`);
       } else {
         await fsp.copyFile(item.path, dest);
       }
@@ -430,11 +436,53 @@ async function installSettings(sources, installTarget, flags) {
   return { count: 1, total: fragments.length, managedPaths: [path.basename(installTarget)] };
 }
 
+async function installOpencodeSettings(sources, installTarget, flags) {
+  const fragments = [];
+  const sorted = [...sources].reverse();
+
+  for (const { name, dir } of sorted) {
+    // opencode.json fragments are opencode-native; settings.json fragments are
+    // Claude-shaped and get mapped through the adapter (currently mcpServers -> mcp).
+    const opencodePath = path.join(dir, 'opencode.json');
+    let opencodeFragment = null;
+    if (fs.existsSync(opencodePath)) {
+      try { opencodeFragment = JSON.parse(fs.readFileSync(opencodePath, 'utf8')); } catch {}
+    }
+    const mapped = adaptClaudeSettingsForOpencode(loadSettingsFragment(dir));
+
+    if (opencodeFragment) fragments.push({ sourceName: name, fragment: opencodeFragment });
+    if (Object.keys(mapped).length > 0) fragments.push({ sourceName: name, fragment: mapped });
+  }
+
+  if (fragments.length === 0) return { count: 0, total: 0 };
+
+  if (flags.dryRun) {
+    for (const f of fragments) {
+      console.log(`    opencode fragment from: ${f.sourceName} (${Object.keys(f.fragment).join(', ')})`);
+    }
+    return { count: 0, total: fragments.length, managedPaths: [path.basename(installTarget)] };
+  }
+
+  let existing = {};
+  if (fs.existsSync(installTarget)) {
+    try {
+      existing = JSON.parse(fs.readFileSync(installTarget, 'utf8'));
+    } catch {}
+  }
+
+  const merged = mergeSettingsFragments(existing, fragments);
+  await fsp.mkdir(path.dirname(installTarget), { recursive: true });
+  await fsp.writeFile(installTarget, JSON.stringify(merged, null, 2) + '\n', 'utf8');
+
+  return { count: 1, total: fragments.length, managedPaths: [path.basename(installTarget)] };
+}
+
 async function setup(args, flags = {}) {
   const root = getProjectRoot();
   const config = readConfig();
   const scope = flags.scope || 'user';
-  const { manifestPath } = getManagedMetadataPaths(scope);
+  const harness = flags.harness || 'claude';
+  const { manifestPath } = getManagedMetadataPaths(scope, harness);
   const typeFilter = flags.type
     ? [...new Set(flags.type.split(',').map(type => (type === 'claude-md' ? 'guidelines' : type)))]
     : null;
@@ -442,6 +490,7 @@ async function setup(args, flags = {}) {
   console.log('claudecode-omc setup');
   console.log('====================');
   console.log(`Scope: ${scope}`);
+  console.log(`Harness: ${harness}`);
   if (typeFilter) console.log(`Types: ${typeFilter.join(', ')}`);
   console.log('');
 
@@ -480,7 +529,7 @@ async function setup(args, flags = {}) {
 
     const sourcesForType = collectSourceDirsForType(artifactType, root, config);
 
-    const installTarget = getScopedInstallTarget(artifactType, scope, process.cwd());
+    const installTarget = getScopedInstallTarget(artifactType, scope, process.cwd(), harness);
 
     console.log(`[${step}/${totalSteps}] ${typeConfig.label} (${sourcesForType.length} sources)`);
 
@@ -489,11 +538,20 @@ async function setup(args, flags = {}) {
       continue;
     }
 
+    if (harness === 'opencode' && (artifactType === 'hooks' || artifactType === 'hud')) {
+      console.log('    skipped: OpenCode has no direct equivalent (hooks -> plugins, HUD -> tui.json)');
+      continue;
+    }
+
     let result;
     switch (typeConfig.mergeStrategy) {
-      case 'name-based':
-        result = await installNameBasedArtifacts(artifactType, sourcesForType, mergeConfig, installTarget, flags);
+      case 'name-based': {
+        const transform = harness === 'opencode'
+          ? (artifactType === 'agents' ? adaptAgentMarkdown : artifactType === 'commands' ? adaptCommandMarkdown : null)
+          : null;
+        result = await installNameBasedArtifacts(artifactType, sourcesForType, mergeConfig, installTarget, flags, transform);
         break;
+      }
       case 'config-merge':
         result = await installHooks(sourcesForType, installTarget, flags);
         break;
@@ -501,7 +559,9 @@ async function setup(args, flags = {}) {
         result = await installSectionDocument(artifactType, sourcesForType, installTarget, flags);
         break;
       case 'deep-merge':
-        result = await installSettings(sourcesForType, installTarget, flags);
+        result = harness === 'opencode'
+          ? await installOpencodeSettings(sourcesForType, installTarget, flags)
+          : await installSettings(sourcesForType, installTarget, flags);
         break;
       default:
         result = await installNameBasedArtifacts(artifactType, sourcesForType, mergeConfig, installTarget, flags);
@@ -545,7 +605,7 @@ async function setup(args, flags = {}) {
       console.log(`    resolved ${result.conflicts} conflicts`);
     }
 
-    if (artifactType === 'skills' && !flags.dryRun) {
+    if (artifactType === 'skills' && harness === 'claude' && !flags.dryRun) {
       try {
         const { buildAndWriteIndex } = require('./skill-index');
         await buildAndWriteIndex(installTarget, { quiet: false });
@@ -555,13 +615,13 @@ async function setup(args, flags = {}) {
     }
   }
 
-  if (!flags.dryRun && scope === 'user') {
-    await writeInstallMetadata(root);
-    await writeOmcConfig(root, scope);
-    await fsp.writeFile(manifestPath, JSON.stringify(nextManifest, null, 2) + '\n', 'utf8');
-  } else if (!flags.dryRun && scope === 'project') {
+  if (!flags.dryRun) {
     await fsp.mkdir(path.dirname(manifestPath), { recursive: true });
     await fsp.writeFile(manifestPath, JSON.stringify(nextManifest, null, 2) + '\n', 'utf8');
+    if (scope === 'user' && harness === 'claude') {
+      await writeInstallMetadata(root);
+      await writeOmcConfig(root, scope);
+    }
   }
 
   console.log('\nDone.');

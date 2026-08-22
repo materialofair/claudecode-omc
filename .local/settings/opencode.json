@@ -1,0 +1,17 @@
+{
+  "provider": {
+    "zhipu": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Zhipu AI (BigModel)",
+      "options": {
+        "baseURL": "https://open.bigmodel.cn/api/paas/v4",
+        "apiKey": "{env:ZHIPU_API_KEY}"
+      },
+      "models": {
+        "glm-5.2": { "name": "GLM-5.2" },
+        "glm-5.3": { "name": "GLM-5.3" }
+      }
+    }
+  },
+  "model": "zhipu/glm-5.2"
+}

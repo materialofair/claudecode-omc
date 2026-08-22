@@ -268,6 +268,45 @@ omc-manage source sync     # Fetch latest from all upstream repos
 omc-manage setup --force   # Reinstall with updated artifacts
 ```
 
+## OpenCode harness
+
+`omc-manage setup` can install the same curated artifacts for
+[OpenCode](https://opencode.ai) instead of Claude Code by passing
+`--harness opencode`:
+
+```bash
+omc-manage setup --harness opencode                # user scope (~/.config/opencode)
+omc-manage setup --harness opencode --scope project # project scope (.opencode/, opencode.json)
+```
+
+Mapping at install time:
+
+| Claude Code | OpenCode |
+|-------------|----------|
+| `~/.claude/skills/` | `~/.config/opencode/skills/` |
+| `~/.claude/agents/*.md` | `~/.config/opencode/agents/*.md` (frontmatter adapted) |
+| `~/.claude/commands/*.md` | `~/.config/opencode/commands/*.md` (frontmatter adapted) |
+| `~/.claude/CLAUDE.md` | `~/.config/opencode/AGENTS.md` |
+| `~/.claude/settings.json` | `~/.config/opencode/opencode.json` (`mcpServers` → `mcp`) |
+| `~/.claude/hooks/` | *skipped* — OpenCode uses plugins, not Claude hooks |
+| `~/.claude/hud/` | *skipped* — OpenCode theming lives in `tui.json` |
+
+### GLM-5.2+ model config
+
+The shipped `.local/settings/opencode.json` declares a `zhipu` provider
+(BigModel's OpenAI-compatible endpoint) with `glm-5.2` and `glm-5.3` and sets
+`zhipu/glm-5.2` as the default model. It is merged into the generated
+`opencode.json` and reads the API key from the `ZHIPU_API_KEY` environment
+variable:
+
+```bash
+export ZHIPU_API_KEY=...              # https://open.bigmodel.cn
+omc-manage setup --harness opencode   # then run `opencode` and pick a GLM model
+```
+
+GLM Coding Plan (套餐) users should switch `baseURL` to
+`https://open.bigmodel.cn/api/coding/paas/v4` in `.local/settings/opencode.json`.
+
 ## Conflict Resolution
 
 When the same artifact exists in multiple sources:

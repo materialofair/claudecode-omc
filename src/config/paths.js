@@ -206,6 +206,36 @@ function getSyncTempDir(sourceName, root) {
   return path.join(root, '.tmp-sync-' + sourceName);
 }
 
+function getOpencodeConfigDir() {
+  return path.join(os.homedir(), '.config', 'opencode');
+}
+
+// OpenCode install targets. Mirrors Claude's getInstallTarget but points at
+// ~/.config/opencode (global) or .opencode/ (project) and maps the two
+// single-file artifacts to opencode.json / AGENTS.md.
+function getOpencodeInstallTarget(artifactType, scope, cwd) {
+  if (artifactType === 'settings') {
+    return scope === 'project' ? path.join(cwd, 'opencode.json') : path.join(getOpencodeConfigDir(), 'opencode.json');
+  }
+  if (artifactType === 'guidelines' || artifactType === 'claude-md') {
+    return scope === 'project' ? path.join(cwd, 'AGENTS.md') : path.join(getOpencodeConfigDir(), 'AGENTS.md');
+  }
+  if (artifactType === 'hud') {
+    return null; // OpenCode has no HUD directory; TUI theming lives in tui.json
+  }
+
+  const subdir = {
+    skills: 'skills',
+    agents: 'agents',
+    commands: 'commands',
+    hooks: 'plugins',
+  }[artifactType] || artifactType;
+
+  return scope === 'project'
+    ? path.join(cwd, '.opencode', subdir)
+    : path.join(getOpencodeConfigDir(), subdir);
+}
+
 // Generic: get install target for an artifact type
 function getInstallTarget(artifactType) {
   const type = ARTIFACT_TYPES[artifactType];
@@ -213,7 +243,11 @@ function getInstallTarget(artifactType) {
   return type.installTarget;
 }
 
-function getScopedInstallTarget(artifactType, scope = 'user', cwd = process.cwd()) {
+function getScopedInstallTarget(artifactType, scope = 'user', cwd = process.cwd(), harness = 'claude') {
+  if (harness === 'opencode') {
+    return getOpencodeInstallTarget(artifactType, scope, cwd);
+  }
+
   if (scope !== 'project') {
     return getInstallTarget(artifactType);
   }
@@ -275,6 +309,7 @@ module.exports = {
   getSyncTempDir,
   getInstallTarget,
   getScopedInstallTarget,
+  getOpencodeConfigDir,
   USER_DATA_DIR,
   // Backward-compatible
   getLocalSkillsDir,

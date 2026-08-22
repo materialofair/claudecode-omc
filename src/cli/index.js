@@ -76,6 +76,8 @@ async function main(argv) {
         flags.local = true;
       }
     }
+    else if (arg === '--harness' && args[i + 1]) flags.harness = args[++i];
+    else if (arg.startsWith('--harness=')) flags.harness = arg.split('=')[1];
     else if (arg === '--scope' && args[i + 1]) flags.scope = args[++i];
     else if (arg.startsWith('--scope=')) flags.scope = arg.split('=')[1];
     else if (arg === '--type' && args[i + 1]) flags.type = args[++i];
