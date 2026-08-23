@@ -97,6 +97,23 @@ test('skill adapter matches the OpenCode directory name and normalizes common in
   assert.doesNotMatch(out, /^argument-hint:/m);
 });
 
+test('skill adapter preserves explicit-invocation policy in the OpenCode body', () => {
+  const input = [
+    '---',
+    'name: prototype',
+    'description: Build UI variants only when explicitly invoked.',
+    'disable-model-invocation: true',
+    '---',
+    'Build isolated variants.',
+  ].join('\n');
+
+  const out = adaptSkillMarkdown({ name: 'prototype' }, input);
+
+  assert.doesNotMatch(out, /^disable-model-invocation:/m);
+  assert.match(out, /OMC explicit-invocation policy/);
+  assert.match(out, /only when the user explicitly names `prototype`/);
+});
+
 test('command adapter keeps description and drops Claude-only keys', () => {
   const input = [
     '---',
@@ -171,6 +188,10 @@ test('opencode setup (project scope) installs to .opencode and adapts artifacts'
   const skillPath = path.join(project, '.opencode', 'skills', 'plan', 'SKILL.md');
   assert.equal(fs.existsSync(skillPath), true);
   assert.match(fs.readFileSync(skillPath, 'utf8'), /^---\nname: plan\n/);
+
+  const skillIndexPath = path.join(project, '.opencode', 'skills', '_index.md');
+  assert.equal(fs.existsSync(skillIndexPath), true, 'OpenCode setup should generate a skill index');
+  assert.match(fs.readFileSync(skillIndexPath, 'utf8'), /`prompt-optimizer`/);
 
   for (const skillDir of fs.readdirSync(path.join(project, '.opencode', 'skills'))) {
     const installedSkill = path.join(project, '.opencode', 'skills', skillDir, 'SKILL.md');

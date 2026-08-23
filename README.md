@@ -38,16 +38,16 @@ Defaults (only the bundled sources, no extras):
 
 | Artifact | Count | Sources |
 |----------|-------|---------|
-| Skills | ~70 | oh-my-claudecode + superpowers + iOS/SwiftUI pack |
-| Agents | ~19 | oh-my-claudecode + superpowers |
-| Hooks | ~8 | oh-my-claudecode (standalone) |
-| Commands | ~3 | superpowers |
+| Skills | ~120 on a fresh config | local + oh-my-claudecode + superpowers + curated ECC + impeccable + Emil motion pack |
+| Agents | ~41 | oh-my-claudecode + curated ECC + impeccable |
+| Hooks | ~3 | superpowers |
+| Commands | ~24 | local + curated ECC |
 | Guidelines | 1 | local coding discipline prompt guidelines |
 
 Artifacts are installed to `~/.claude/` for Claude Code or `~/.config/opencode/` for OpenCode.
-Adding a curated subset of [everything-claude-code](https://github.com/affaan-m/everything-claude-code)
-on top can take totals to ~102 skills / ~35 agents / ~26 commands — see
-[Distribution-Repo Sources](#distribution-repo-sources) below.
+Counts reflect the checked-in governance allowlists and can change when pinned
+upstream snapshots are deliberately updated. Existing customized source configs
+remain at their previous count until the opt-in command below is run.
 
 The bundled guidelines install into `~/.claude/CLAUDE.md` and add lightweight
 coding discipline rules
@@ -71,6 +71,44 @@ The latest release includes 8 specialized iOS/SwiftUI skills from MIT-licensed s
 | `swiftui-view-refactor` | [Dimillian](https://github.com/Dimillian) | View architecture and refactoring |
 
 All skills include comprehensive reference materials and follow ECC standards for seamless integration.
+
+### Web UI and motion skills
+
+The default catalog includes 10 focused skills from
+[emilkowalski/skills](https://github.com/emilkowalski/skills), pinned and
+curated as the `emilkowalski` source. The broad `emil-design-eng` and general
+Swift `write-swift` skills are intentionally excluded because `impeccable` and
+the local SwiftUI pack already own those routes.
+
+For prompt optimization, the project-local `prompt-optimizer` is explicitly
+preferred over upstream versions. It recommends a small stack-aware chain:
+
+```text
+Web product polish:
+impeccable → [prototype] → find-animation-opportunities → animate
+  → review-animations → [visual-verdict]
+
+Existing motion audit:
+improve-animations → animate → review-animations → [visual-verdict]
+
+React Native / Expo:
+animate-expo → release-build device verification
+```
+
+`visual-verdict` is included only when screenshots or reference images exist.
+Native SwiftUI work continues to use `swiftui-ui-patterns` and the local
+SwiftUI review/performance skills rather than the Web motion chain.
+
+Users with an existing customized `~/.omc-manage/sources.json` can opt into
+the new built-in source without replacing their other source settings:
+
+```bash
+omc-manage source add emilkowalski https://github.com/emilkowalski/skills.git \
+  --priority 6 --artifacts skills --harnesses claude,opencode \
+  --manifests LICENSE,README.md
+omc-manage source sync emilkowalski --frozen
+omc-manage setup --type skills
+```
 
 ## Commands
 
@@ -103,7 +141,8 @@ The examples below use `omc-manage`; OpenCode users can substitute `opencode-omc
 | superpowers | 3 | yes | Engineering process guardrails (TDD, debugging, etc.) |
 | ecc | 4 | yes | [everything-claude-code](https://github.com/affaan-m/everything-claude-code) distribution; ships a curated subset via `.omc-curation/ecc-selection.json` (not all 251 skills) |
 | impeccable | 5 | yes | [impeccable](https://github.com/pbakaus/impeccable) design skill (frontend UI design/critique/polish with 23 commands) plus its companion agent |
-| your own | 6+ | opt-in | Distribution-style repos added via `source add --kind distribution-repo` |
+| emilkowalski | 6 | yes | Curated Web UI interaction and motion skills from [emilkowalski/skills](https://github.com/emilkowalski/skills) |
+| your own | 7+ | opt-in | Distribution-style repos added via `source add --kind distribution-repo` |
 
 ### Governance manifest
 

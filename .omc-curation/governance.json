@@ -95,12 +95,31 @@
     "impeccable": {
       "priority": 5
     },
+    "emilkowalski": {
+      "priority": 6,
+      "allowlist": {
+        "skills": [
+          "animate",
+          "animate-expo",
+          "animation-vocabulary",
+          "apple-design",
+          "ask-sonner",
+          "find-animation-opportunities",
+          "improve-animations",
+          "pick-ui-library",
+          "prototype",
+          "review-animations"
+        ]
+      }
+    },
     "anthropic-skills": {
       "priority": 99
     }
   },
   "conflict": {
-    "preferences": {},
+    "preferences": {
+      "prompt-optimizer": "local"
+    },
     "exclude": {
       "skills": [
         "ask",

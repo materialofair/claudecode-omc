@@ -627,7 +627,7 @@ async function setup(args, flags = {}) {
       console.log(`    resolved ${result.conflicts} conflicts`);
     }
 
-    if (artifactType === 'skills' && harness === 'claude' && !flags.dryRun) {
+    if (artifactType === 'skills' && !flags.dryRun) {
       try {
         const { buildAndWriteIndex } = require('./skill-index');
         await buildAndWriteIndex(installTarget, { quiet: false });

@@ -125,6 +125,16 @@ function getDefaultConfig() {
         harnesses: ['claude'],
         profiles: DEFAULT_INSTALL_PROFILES,
       },
+      emilkowalski: {
+        remote: 'https://github.com/emilkowalski/skills.git',
+        ref: 'main',
+        priority: 6,
+        artifacts: ['skills'],
+        kind: 'content-repo',
+        harnesses: ['claude', 'opencode'],
+        manifests: ['LICENSE', 'README.md'],
+        profiles: DEFAULT_INSTALL_PROFILES,
+      },
       'anthropic-skills': {
         remote: 'https://github.com/anthropics/skills.git',
         ref: 'main',

@@ -1,6 +1,6 @@
 {
   "name": "opencode-omc",
-  "version": "6.0.0",
+  "version": "6.1.0",
   "description": "OpenCode harness with curated skills, agents, commands, and GLM defaults",
   "bin": {
     "opencode-omc": "bin/opencode-omc.js"
@@ -11,7 +11,7 @@
     "prepublishOnly": "node ../../scripts/assert-release-ready.js --require-core"
   },
   "dependencies": {
-    "@ah-wq/omc-core": "6.0.0"
+    "@ah-wq/omc-core": "6.1.0"
   },
   "engines": {
     "node": ">=20"

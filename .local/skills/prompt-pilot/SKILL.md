@@ -20,8 +20,13 @@ description: >-
 origin: fork
 metadata:
   author: oh-my-claudecode
-  version: "1.2.0"
+  version: "1.3.0"
   changelog: |
+    1.3.0 — UI/interaction/motion prompts now use the project-local routing
+            contract: broad Web polish starts with impeccable, motion work is
+            delegated to the curated Emil specialists, and final appearance is
+            checked with visual-verdict. Expo and SwiftUI use stack-specific
+            substitutions instead of receiving the Web chain blindly.
     1.2.0 — Swept Medium/Low review items: terminal behavior for a repeated
             clarifying-questions loop (no infinite re-dispatch); tightened the
             over-broad "When to Use" line so a bare vague task can't trigger it;
@@ -116,6 +121,22 @@ carry their diagnosis in the pasted payload.
 >    skim AGENTS.md/README if present, `git status --short` only if
 >    the prompt references current changes/branch. Cite only what you actually
 >    read. Skip silently if nothing is found.
+>    If the raw request is about **UI/interaction/motion**, also read the live
+>    skill `_index.md` for the active harness: OpenCode checks project
+>    `.opencode/skills` then `~/.config/opencode/skills`; Claude Code checks
+>    project `.claude/skills` then `~/.claude/skills`. Never use the other
+>    harness's catalog merely because it exists. If the harness is unknown,
+>    inspect both, recommend their installed intersection, and flag the
+>    uncertainty. Recommend a small ordered combination of installed
+>    skills rather than a flat catalog. For Web product polish use
+>    `impeccable → [prototype] → find-animation-opportunities → animate →
+>    review-animations → [visual-verdict when references exist]`, trimming to
+>    3–5 relevant steps. For
+>    an existing Web motion audit use `improve-animations` first. React Native /
+>    Expo uses `animate-expo` followed by release-build device verification;
+>    do not append the Web `review-animations` skill. Native SwiftUI uses the local
+>    `swiftui-ui-patterns`/SwiftUI skills, not the Web motion chain. Never
+>    recommend `emil-design-eng` or `write-swift`.
 > 3. Produce **exactly 3 concise variants** that differ by SCOPE/ambition:
 >    - **A) Minimal** — smallest correct change that satisfies the core ask.
 >    - **B) Balanced** — standard quality bar, the sensible default.

@@ -149,6 +149,7 @@ function adaptSkillMarkdown(item, content) {
   const { frontmatter, body } = splitFrontmatter(content);
   if (frontmatter == null) return content;
 
+  const explicitInvocationOnly = /^disable-model-invocation\s*:\s*true\s*$/mi.test(frontmatter);
   const nameLine = `name: ${serializeScalar(item.name)}`;
   const allowedKeys = new Set(['name', 'description', 'license', 'compatibility', 'metadata']);
   const frontmatterLines = frontmatter.split('\n');
@@ -177,7 +178,11 @@ function adaptSkillMarkdown(item, content) {
     .replace(/\.claude\//g, '.opencode/')
     .replace(/CLAUDE\.md/g, 'AGENTS.md');
 
-  return `---\n${normalizedFrontmatter}\n---\n${normalizedBody}`;
+  const invocationPolicy = explicitInvocationOnly
+    ? `> **OMC explicit-invocation policy:** Use this skill only when the user explicitly names \`${item.name}\` or directly requests this exact workflow. Do not select it automatically.\n\n`
+    : '';
+
+  return `---\n${normalizedFrontmatter}\n---\n${invocationPolicy}${normalizedBody}`;
 }
 
 // OpenCode commands keep the body as the prompt template and support

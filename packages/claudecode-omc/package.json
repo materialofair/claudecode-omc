@@ -1,6 +1,6 @@
 {
   "name": "claudecode-omc",
-  "version": "6.0.0",
+  "version": "6.1.0",
   "description": "Claude Code harness with curated skills, agents, hooks, and configs",
   "bin": {
     "omc-manage": "bin/omc-manage.js"
@@ -11,7 +11,7 @@
     "prepublishOnly": "node ../../scripts/assert-release-ready.js --require-core"
   },
   "dependencies": {
-    "@ah-wq/omc-core": "6.0.0"
+    "@ah-wq/omc-core": "6.1.0"
   },
   "engines": {
     "node": ">=20"

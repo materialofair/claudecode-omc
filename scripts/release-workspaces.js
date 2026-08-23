@@ -31,8 +31,23 @@ function run(command, args, options = {}) {
   return options.capture ? result.stdout.trim() : '';
 }
 
+function createIsolatedSourceEnvironment(baseEnv = process.env) {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'omc-release-source-home-'));
+  return {
+    env: { ...baseEnv, HOME: home, USERPROFILE: home },
+    cleanup() {
+      fs.rmSync(home, { recursive: true, force: true });
+    },
+  };
+}
+
 function verifyRelease() {
-  run(NODE, ['bin/omc-manage.js', 'source', 'sync', '--frozen']);
+  const isolated = createIsolatedSourceEnvironment();
+  try {
+    run(NODE, ['bin/omc-manage.js', 'source', 'sync', '--frozen'], { env: isolated.env });
+  } finally {
+    isolated.cleanup();
+  }
   run(NPM, ['run', 'bundle']);
   run(NPM, ['test'], { env: { OMC_REQUIRE_DISTRIBUTION_TEST: '1' } });
   const state = writeReleaseState();
@@ -120,4 +135,11 @@ if (require.main === module) {
   }
 }
 
-module.exports = { PACKAGES, main, publishRelease, verifyRelease, waitForRegistry };
+module.exports = {
+  PACKAGES,
+  createIsolatedSourceEnvironment,
+  main,
+  publishRelease,
+  verifyRelease,
+  waitForRegistry,
+};
