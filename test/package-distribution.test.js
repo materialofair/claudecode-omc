@@ -104,6 +104,10 @@ test('workspace tarballs install through a registry dependency and expose coexis
 
   assert.ok(corePaths.includes('src/cli/index.js'));
   assert.ok(corePaths.includes('.local/settings/opencode.json'));
+  assert.ok(corePaths.includes('.local/skills/eli5/SKILL.md'));
+  assert.ok(corePaths.includes(
+    '.local/skills/THIRD_PARTY_LICENSES/Anthropic-claude-plugins-community.LICENSE',
+  ));
   assert.ok(corePaths.includes('bundled/manifest.json'));
   assert.equal(corePaths.some((file) => file.includes('merge-review')), false);
   assert.deepEqual(claudePaths.sort(), [

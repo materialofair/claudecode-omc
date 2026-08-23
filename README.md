@@ -38,7 +38,7 @@ Defaults (only the bundled sources, no extras):
 
 | Artifact | Count | Sources |
 |----------|-------|---------|
-| Skills | ~120 on a fresh config | local + oh-my-claudecode + superpowers + curated ECC + impeccable + Emil motion pack |
+| Skills | ~121 on a fresh config | local (including `eli5`) + oh-my-claudecode + superpowers + curated ECC + impeccable + Emil motion pack |
 | Agents | ~41 | oh-my-claudecode + curated ECC + impeccable |
 | Hooks | ~3 | superpowers |
 | Commands | ~24 | local + curated ECC |
@@ -71,6 +71,14 @@ The latest release includes 8 specialized iOS/SwiftUI skills from MIT-licensed s
 | `swiftui-view-refactor` | [Dimillian](https://github.com/Dimillian) | View architecture and refactoring |
 
 All skills include comprehensive reference materials and follow ECC standards for seamless integration.
+
+### ELI5 visual explainer
+
+The local `eli5` skill is vendored from
+[Anthropic's Claude plugins community](https://github.com/anthropics/claude-plugins-community/tree/main/eli5/skills/eli5).
+Use `/eli5 <topic>` or ask for a dead-simple visual explanation to produce an
+HTML artifact with large pictures and minimal wording. The Apache-2.0 license
+and pinned source attribution ship with the package.
 
 ### Web UI and motion skills
 

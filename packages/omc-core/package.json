@@ -1,6 +1,6 @@
 {
   "name": "@ah-wq/omc-core",
-  "version": "6.1.0",
+  "version": "6.1.1",
   "description": "Shared runtime and curated artifacts for claudecode-omc and opencode-omc",
   "main": "runtime.js",
   "exports": {
